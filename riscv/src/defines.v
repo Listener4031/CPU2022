@@ -103,5 +103,5 @@
 `define FUNCT7_SLTU  7'b0000000
 `define FUNCT7_XOR   7'b0000000
 `define FUNCT7_SRL   7'b0000000
-
+`define FUNCT7_SRA   7'b0000000
 
