@@ -24,7 +24,6 @@ always @(*) begin
     is_store=0;
     is_jump=0;
     is_branch=0;
-
     if(inst[6:0]==`OPCODE_LUI) begin
         OP_ID=`LUI;
         imm={inst[31:12],12'b000000000000};
