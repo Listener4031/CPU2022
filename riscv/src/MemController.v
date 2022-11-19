@@ -6,19 +6,19 @@ module MemController(
 
     input wire global_full,
 
-    //ram
+    // ram
     input wire [7:0] mem_in,     // data from memory     
     output reg [7:0] mem_out,    // data to memory
     output reg [31:0] mem_addr,  // address in memory
     output reg is_write,         // MC is to write memory
 
-    //InstCache
+    // InstCache
     input wire IC_able_read,          // IC is able to read
     input wire [31:0] IC_inst_addr,   // address in IC
     output reg IC_able_fetch,         // IC is able to fetch instruction
     output reg [31:0] IC_inst,        // instruction to IC
 
-    //LSBuffer
+    // LSBuffer
     input wire LSB_valid,              //
     input wire [31:0] LSB_addr,        // address in LSB
     input wire LSB_is_write,           // LSB is to write 

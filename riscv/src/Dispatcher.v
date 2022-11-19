@@ -3,6 +3,17 @@ module Dispatcher(
     input wire rst,
     input wire rdy
 
+    //Fetcher
+
+    //ReorderBuffer
+
+    //RegFile
+
+    //RsvStation
+
+    //LSBuffer
+
+    //CDB
 );
 
 endmodule
