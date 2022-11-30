@@ -11,9 +11,9 @@ module Decoder(
     input wire ROB_is_full,
 
     // InstQueue
-    input wire IQ_inst_valid,    // 1'b1 -> IQ_inst could be used
-    input wire [31:0] IQ_inst,
-    input wire [31:0] IQ_pc,
+    input wire IQ_inst_valid,                    // `True -> IQ_inst could be used
+    input wire [`InstWidth - 1 : 0] IQ_inst,
+    input wire [`AddrWidth - 1 : 0] IQ_pc,
     output reg IQ_enable,
 
     // ReorderBuffer
@@ -25,29 +25,29 @@ module Decoder(
 
     // RegFile
     output reg RF_rd_valid,
-    output reg [4:0] RF_ind_rd,
+    output reg [`RegIndexBus] RF_ind_rd,
     output reg RF_rs1_valid,
-    output reg [4:0] RF_ind_rs1,
+    output reg [`RegIndexBus] RF_ind_rs1,
     output reg RF_rs2_valid,
-    output reg [4:0] RF_ind_rs2,
+    output reg [`RegIndexBus] RF_ind_rs2,
     output reg [3:0] RF_rd_tag,
 
     // Dispatcher
     output reg Dispatcher_enable,
-    output reg [5:0] Dispatcher_OP_ID,   // op_id
-    output reg [31:0] Dispatcher_pc,
-    output reg [31:0] Dispatcher_imm,
+    output reg [`OpIdBus] Dispatcher_OP_ID,   // op_id
+    output reg [`AddrWidth - 1 : 0] Dispatcher_pc,
+    output reg [`ImmWidth - 1 : 0] Dispatcher_imm,
     output reg [3:0] Dispatcher_rd_tag
     
 );
 
-wire [31:0] inst;
+wire [`InstWidth - 1 : 0] inst;
 assign inst = IQ_inst;
-wire [6:0] opcode;
+wire [`OpcodeBus] opcode;
 assign opcode = inst[6:0];
-wire [2:0] funct3;
+wire [`Funct3Bus] funct3;
 assign funct3 = inst[14:12];
-wire [6:0] funct7;
+wire [`Funct7Bus] funct7;
 assign funct7 = inst[31:25];
 
 wire is_ALU, is_Branch, is_LSB;

@@ -1,3 +1,15 @@
+`define True  1'b1
+`define False 1'b0
+
+`define InstWidth 32
+`define AddrWidth 32
+`define RegIndexBus 4:0
+`define OpIdBus 5:0
+`define ImmWidth 32
+`define OpcodeBus 6:0
+`define Funct3Bus 2:0
+`define Funct7Bus 6:0
+
 //instruction set
 `define NOP     6'd0
 
