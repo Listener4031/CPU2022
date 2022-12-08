@@ -5,40 +5,26 @@ module Decoder(
     input wire rst,
     input wire rdy,
 
-    input wire ALURS_is_full,
-    input wire BranchRS_is_full,
-    input wire LSBRS_is_full,
-    input wire ROB_is_full,
-
     // InstQueue
     input wire IQ_inst_valid,                    // `True -> IQ_inst could be used
     input wire [`InstWidth - 1 : 0] IQ_inst,
     input wire [`AddrWidth - 1 : 0] IQ_pc,
-    output reg IQ_enable,
-
-    // ReorderBuffer
-    input wire [3:0] ROB_tag,
-    output reg ROB_enable,
-    output reg ROB_ready,
-    output reg [4:0] ROB_rd,
-    output reg [2:0] ROB_type,
+    
+    // LSBuffer
 
     // RegFile
-    output reg RF_rd_valid,
-    output reg [`RegIndexBus] RF_ind_rd,
-    output reg RF_rs1_valid,
-    output reg [`RegIndexBus] RF_ind_rs1,
-    output reg RF_rs2_valid,
-    output reg [`RegIndexBus] RF_ind_rs2,
-    output reg [3:0] RF_rd_tag,
+    output reg [`RegIndexBus] RF_rd,
+    output reg [`RegIndexBus] RF_rs1,
+    output reg [`RegIndexBus] RF_rs2,
 
-    // Dispatcher
-    output reg Dispatcher_enable,
-    output reg [`OpIdBus] Dispatcher_OP_ID,   // op_id
-    output reg [`AddrWidth - 1 : 0] Dispatcher_pc,
-    output reg [`ImmWidth - 1 : 0] Dispatcher_imm,
-    output reg [3:0] Dispatcher_rd_tag
-    
+    // RsvStation
+    input wire RS_is_full,
+    output reg [`DataWidth - 1 : 0] RS_inst_pc,
+    output reg [`OpIdBus] RS_OP_ID,
+    output reg [`RegIndexBus] RS_rd,
+    output reg [`ImmWidth - 1 : 0] RS_imm
+
+    // ReorderBuffer
 );
 
 wire [`InstWidth - 1 : 0] inst;
@@ -56,7 +42,16 @@ assign is_Branch = (opcode == `OPCODE_JAL || opcode == `OPCODE_JALR || opcode ==
 assign is_LSB = (opcode == `OPCODE_LUI || opcode == `OPCODE_S);
 
 wire stall;
-assign stall = (IQ_inst_valid == 1'b0 || ROB_is_full == 1'b1 || (is_ALU == 1'b1 && ALURS_is_full == 1'b1) || (is_Branch == 1'b1 && BranchRS_is_full == 1'b1) || (is_LSB == 1'b1 && LSBRS_is_full == 1'b1));
+//assign stall = (IQ_inst_valid == 1'b0 || ROB_is_full == 1'b1 || (is_ALU == 1'b1 && ALURS_is_full == 1'b1) || (is_Branch == 1'b1 && BranchRS_is_full == 1'b1) || (is_LSB == 1'b1 && LSBRS_is_full == 1'b1));
+
+always @(posedge clk) begin
+    if(rst == `True) begin
+    end
+    else if(stall == `True) begin
+    end
+    else begin
+    end
+end
 
 always @(*) begin
     if(stall == 1'b1) begin
@@ -122,11 +117,11 @@ always @(*) begin
             ROB_rd = inst[11:7];
             ROB_type = 3'b100;
             RF_rd_valid = 1'b1;
-            RF_ind_rd = inst[11:7];
-            RF_rs1_valid = 1'b1;
-            RF_ind_rs1 = 5'b00000;
-            RF_rs2_valid = 1'b1;
-            RF_ind_rs2 = 5'b00000;
+            //RF_ind_rd = inst[11:7];
+            //RF_rs1_valid = 1'b1;
+            //RF_ind_rs1 = 5'b00000;
+            //RF_rs2_valid = 1'b1;
+            //RF_ind_rs2 = 5'b00000;
             RF_rd_tag = ROB_tag;
             Dispatcher_imm = {{12{inst[31]}}, inst[19:12], inst[20], inst[30:21], 1'b0};
             Dispatcher_rd_tag = ROB_tag;
@@ -138,9 +133,9 @@ always @(*) begin
             ROB_rd = inst[11:7];
             ROB_type = 3'b100;
             RF_rd_valid = 1'b1;
-            RF_ind_rd = inst[11:7];
-            RF_rs1_valid = 1'b1;
-            RF_ind_rs1 = inst[19:15];
+            //RF_ind_rd = inst[11:7];
+            //RF_rs1_valid = 1'b1;
+            //RF_ind_rs1 = inst[19:15];
             RF_rs2_valid = 1'b1;
             RF_ind_rs2 = 5'b00000;
             RF_rd_tag = ROB_tag;
@@ -154,11 +149,11 @@ always @(*) begin
             else if(funct3 == `FUNCT3_BGE) Dispatcher_OP_ID = `BGE;
             else if(funct3 == `FUNCT3_BLTU) Dispatcher_OP_ID = `BLTU;
             else if(funct3 == `FUNCT3_BGEU) Dispatcher_OP_ID = `BGEU;
-            ROB_enable = 1'b1;
-            ROB_ready = 1'b0;
-            ROB_rd = inst[11:7];
-            ROB_type = 3'b001;
-            RF_rd_valid = 1'b0;
+            //ROB_enable = 1'b1;
+            //ROB_ready = 1'b0;
+            //ROB_rd = inst[11:7];
+            //ROB_type = 3'b001;
+            //RF_rd_valid = 1'b0;
             RF_ind_rd = 5'b00000;
             RF_rs1_valid = 1'b1;
             RF_ind_rs1 = inst[19:15];

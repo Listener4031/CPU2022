@@ -3,6 +3,8 @@ module ReorderBuffer(
     input wire rst,
     input wire rdy
 
+    // Decoder
+    
 );
 
 endmodule

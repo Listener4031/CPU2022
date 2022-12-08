@@ -3,12 +3,21 @@
 
 `define InstWidth 32
 `define AddrWidth 32
-`define RegIndexBus 4:0
+`define RegIndexBus 4 : 0
 `define OpIdBus 5:0
 `define ImmWidth 32
-`define OpcodeBus 6:0
-`define Funct3Bus 2:0
-`define Funct7Bus 6:0
+`define OpcodeBus 6 : 0
+`define Funct3Bus 2 : 0
+`define Funct7Bus 6 : 0
+`define DataWidth 32
+
+`define ROBSize 16
+`define ROBIDBus 3 : 0
+
+`define RSSize 16
+`define RSIndexBus 3 : 0
+
+`define RegSize 32
 
 //instruction set
 `define NOP     6'd0
