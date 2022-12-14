@@ -13,6 +13,7 @@
 
 `define ROBSize 16
 `define ROBIDBus 3 : 0
+`define ROBIndexBus 3 : 0
 
 `define RSSize 16
 `define RSIndexBus 3 : 0

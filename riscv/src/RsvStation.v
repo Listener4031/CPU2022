@@ -6,18 +6,7 @@ module RsvStation(
     input wire rdy,
     
     // Decoder
-    /*
-    inst_pcs[RS_ind_valid_pos] <= ;
-            op_ids[RS_ind_valid_pos] <= ;
-            rds[RS_ind_valid_pos] <= ;
-            reg_rs1s[RS_ind_valid_pos] <= ;
-            reg_rs2s[RS_ind_valid_pos] <= ;
-            rs1_valid_judger[RS_ind_valid_pos] <= ;
-            rs2_valid_judger[RS_ind_valid_pos] <= ;
-            id1s[RS_ind_valid_pos] <= ;
-            id2s[RS_ind_valid_pos] <= ;
-            imms[RS_ind_valid_pos] <= ;
-    */
+    input wire ID_input_valid,
     input wire [`DataWidth - 1 : 0] ID_inst_pc,
     input wire [`OpIdBus] ID_OP_ID,
     input wire [`RegIndexBus] ID_rd,
@@ -43,7 +32,8 @@ module RsvStation(
     output reg [`DataWidth - 1 : 0] ALU_pc,
     output reg [`DataWidth - 1 : 0] ALU_reg_rs1,
     output reg [`DataWidth - 1 : 0] ALU_reg_rs2,
-    output reg [`ImmWidth - 1 : 0] ALU_imm
+    output reg [`ImmWidth - 1 : 0] ALU_imm,
+    output reg [`ROBIDBus] ALU_ROB_id
 );
 
 reg [`RSSize - 1 : 0] occupied_judger;              // is this position valid ?
@@ -139,21 +129,7 @@ integer i;
 
 always @(posedge clk) begin
     if(rst == `True) begin
-        /*
-        reg [`RSSize - 1 : 0] occupied_judger;               // is this position valid ?
-reg [`ROBIDBus] ROB_ids[`RSSize - 1 : 0];           // id of inst
-reg [`DataWidth - 1 : 0] inst_pcs[`RSSize - 1 : 0]; // pc of inst
-reg [`OpIdBus] op_ids[`RSSize - 1 : 0];             // what is the op ?
-reg [`RegIndexBus] rds[`RSSize - 1 : 0];            // rd
-reg [`DataWidth - 1 : 0] reg_rs1s[`RSSize - 1 : 0]; 
-reg [`DataWidth - 1 : 0] reg_rs2s[`RSSize - 1 : 0];
-reg [`RSSize - 1 : 0] rs1_valid_judger;
-reg [`RSSize - 1 : 0] rs2_valid_judger;             // valid -> no ROB_id
-reg [`ROBIDBus] id1s[`RSSize - 1 : 0];
-reg [`ROBIDBus] id2s[`RSSize - 1 : 0];
-reg [`ImmWidth - 1 : 0] imms[`RSSize - 1 : 0];
-        */
-        for(i = 0; i < 32; i = i + 1) begin
+        for(i = 0; i < `RSSize; i = i + 1) begin
             occupied_judger[i] <= `False;
             ROB_ids[i] <= {4{1'b0}};
             inst_pcs[i] <= {32{1'b0}};
@@ -186,10 +162,11 @@ reg [`ImmWidth - 1 : 0] imms[`RSSize - 1 : 0];
             ALU_reg_rs1 <= reg_rs1s[RS_ind_to_ALU];
             ALU_reg_rs2 <= reg_rs2s[RS_ind_to_ALU];
             ALU_imm <= imms[RS_ind_to_ALU];
+            ALU_ROB_id <= ROB_ids[RS_ind_to_ALU];
         end
         if(RS_ind_valid_pos == 5'b10000) begin // 其实就是 full 
         end
-        else begin
+        else if(ID_input_valid == `True) begin
             // reg 
             occupied_judger[RS_ind_valid_pos] <= `True;
             ROB_ids[RS_ind_valid_pos] <= ROB_new_ID;

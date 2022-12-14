@@ -3,6 +3,12 @@ module LSBuffer(
     input wire rst,
     input wire rdy
 
+    // Decoder
+
+    // ALU_LS
+
+    // ReorderBuffer
+
 );
 
 endmodule

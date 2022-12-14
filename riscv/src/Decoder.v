@@ -11,20 +11,29 @@ module Decoder(
     input wire [`AddrWidth - 1 : 0] IQ_pc,
     
     // LSBuffer
+    input wire LSB_is_full,
+    output reg LSB_enable,
 
     // RegFile
-    output reg [`RegIndexBus] RF_rd,
+    output reg [`RegIndexBus] RF_rd,           // from RF get ROB_id
     output reg [`RegIndexBus] RF_rs1,
     output reg [`RegIndexBus] RF_rs2,
 
     // RsvStation
-    input wire RS_is_full,
+    input wire RS_is_full,                       // `True -> 
+    output reg RS_enable,
     output reg [`DataWidth - 1 : 0] RS_inst_pc,
     output reg [`OpIdBus] RS_OP_ID,
     output reg [`RegIndexBus] RS_rd,
-    output reg [`ImmWidth - 1 : 0] RS_imm
+    output reg [`ImmWidth - 1 : 0] RS_imm,
 
     // ReorderBuffer
+    input wire ROB_is_full,                      // `True -> 
+    output reg ROB_enable,                       // `False -> 不进队
+    output reg [`DataWidth - 1 : 0] ROB_inst_pc,
+    output reg [`OpIdBus] ROB_OP_ID,
+    output reg [`RegIndexBus] ROB_rd,
+    output reg [`DataWidth - 1 : 0] ROB_values
 );
 
 wire [`InstWidth - 1 : 0] inst;
@@ -36,13 +45,7 @@ assign funct3 = inst[14:12];
 wire [`Funct7Bus] funct7;
 assign funct7 = inst[31:25];
 
-wire is_ALU, is_Branch, is_LSB;
-assign is_ALU = (opcode == `OPCODE_AUIPC || opcode == `OPCODE_L || opcode == `OPCODE_R || opcode == `OPCODE_I);
-assign is_Branch = (opcode == `OPCODE_JAL || opcode == `OPCODE_JALR || opcode == `OPCODE_B);
-assign is_LSB = (opcode == `OPCODE_LUI || opcode == `OPCODE_S);
-
 wire stall;
-//assign stall = (IQ_inst_valid == 1'b0 || ROB_is_full == 1'b1 || (is_ALU == 1'b1 && ALURS_is_full == 1'b1) || (is_Branch == 1'b1 && BranchRS_is_full == 1'b1) || (is_LSB == 1'b1 && LSBRS_is_full == 1'b1));
 
 always @(posedge clk) begin
     if(rst == `True) begin
