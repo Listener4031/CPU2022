@@ -5,10 +5,10 @@ module Decoder(
     input wire rst,
     input wire rdy,
 
-    // InstQueue
-    input wire IQ_inst_valid,                    // `True -> IQ_inst could be used
-    input wire [`InstWidth - 1 : 0] IQ_inst,
-    input wire [`AddrWidth - 1 : 0] IQ_pc,
+    // InstCache
+    input wire IC_input_valid,                    // `True -> IC_inst could be used
+    input wire [`InstWidth - 1 : 0] IC_inst,
+    input wire [`AddrWidth - 1 : 0] IC_pc,
     
     // LSBuffer
     input wire LSB_is_full,
