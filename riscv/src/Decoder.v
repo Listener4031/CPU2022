@@ -1,5 +1,5 @@
 `include "riscv/src/defines.v"
-
+// 周期任务：分解从IC进来（如果有）的指令
 module Decoder(
     input wire clk,
     input wire rst,
@@ -8,54 +8,433 @@ module Decoder(
     // InstCache
     input wire IC_input_valid,                    // `True -> IC_inst could be used
     input wire [`InstWidth - 1 : 0] IC_inst,
-    input wire [`AddrWidth - 1 : 0] IC_pc,
+    input wire [`AddrWidth - 1 : 0] IC_inst_pc,
+    input wire IC_predicted_to_jump,
+    input wire [`AddrWidth - 1 : 0] IC_predicted_pc,
     
     // LSBuffer
-    input wire LSB_is_full,
-    output reg LSB_enable,
+    output reg LSB_output_valid,
+    output reg [`DataWidth - 1 : 0] LSB_inst_pc,
+    output reg [`OpIdBus] LSB_OP_ID,
+    output reg [`RegIndexBus] LSB_rd,
+    output reg [`ImmWidth - 1 : 0] LSB_imm,
 
     // RegFile
-    output reg [`RegIndexBus] RF_rd,           // from RF get ROB_id
+    output reg RF_rd_valid,                      // from RF get ROB_id
+    output reg [`RegIndexBus] RF_rd,           
+    output reg RF_rs1_valid,
     output reg [`RegIndexBus] RF_rs1,
+    output reg RF_rs2_valid,
     output reg [`RegIndexBus] RF_rs2,
 
     // RsvStation
-    input wire RS_is_full,                       // `True -> 
-    output reg RS_enable,
+    output reg RS_output_valid,
     output reg [`DataWidth - 1 : 0] RS_inst_pc,
     output reg [`OpIdBus] RS_OP_ID,
     output reg [`RegIndexBus] RS_rd,
     output reg [`ImmWidth - 1 : 0] RS_imm,
 
     // ReorderBuffer
-    input wire ROB_is_full,                      // `True -> 
-    output reg ROB_enable,                       // `False -> 不进队
+    output reg ROB_ouptut_valid,                  // `False -> 不进队
     output reg [`DataWidth - 1 : 0] ROB_inst_pc,
     output reg [`OpIdBus] ROB_OP_ID,
     output reg [`RegIndexBus] ROB_rd,
-    output reg [`DataWidth - 1 : 0] ROB_values
+    output reg ROB_predicted_to_jump,
+    output reg [`AddrWidth - 1 : 0] ROB_predicted_pc
 );
 
-wire [`InstWidth - 1 : 0] inst;
-assign inst = IQ_inst;
 wire [`OpcodeBus] opcode;
-assign opcode = inst[6:0];
+assign opcode = IC_inst[6 : 0];
 wire [`Funct3Bus] funct3;
-assign funct3 = inst[14:12];
+assign funct3 = IC_inst[14 : 12];
 wire [`Funct7Bus] funct7;
-assign funct7 = inst[31:25];
+assign funct7 = IC_inst[31 : 25];
 
-wire stall;
+/*
+    output reg LSB_output_valid,
+    output reg [`DataWidth - 1 : 0] LSB_inst_pc,
+    output reg [`OpIdBus] LSB_OP_ID,
+    output reg [`RegIndexBus] LSB_rd,
+    output reg [`ImmWidth - 1 : 0] LSB_imm,
+
+    output reg RF_rd_valid,                      // from RF get ROB_id
+    output reg [`RegIndexBus] RF_rd,           
+    output reg RF_rs1_valid,
+    output reg [`RegIndexBus] RF_rs1,
+    output reg RF_rs2_valid,
+    output reg [`RegIndexBus] RF_rs2,
+
+    output reg RS_output_valid,
+    output reg [`DataWidth - 1 : 0] RS_inst_pc,
+    output reg [`OpIdBus] RS_OP_ID,
+    output reg [`RegIndexBus] RS_rd,
+    output reg [`ImmWidth - 1 : 0] RS_imm,
+
+    output reg ROB_ouptut_valid,                  // `False -> 不进队
+    output reg [`DataWidth - 1 : 0] ROB_inst_pc,
+    output reg [`OpIdBus] ROB_OP_ID,
+    output reg ROB_predicted_to_jump,
+    output reg [`AddrWidth - 1 : 0] ROB_predicted_pc
+*/
 
 always @(posedge clk) begin
     if(rst == `True) begin
     end
-    else if(stall == `True) begin
+    else if(rdy == `False) begin
+    end
+    else if(IC_input_valid == `True) begin
+        if(opcode == `OPCODE_LUI) begin
+            // LSB
+            LSB_output_valid <= `False;
+            // RF
+            RF_rd_valid <= `True;
+            RF_rd <= IC_inst[11 : 7];
+            RF_rs1_valid <= `False;
+            RF_rs2_valid <= `False;
+            // RS
+            RS_output_valid <= `True;
+            RS_inst_pc <= IC_inst_pc;
+            RS_OP_ID <= `LUI;
+            RS_rd <= IC_inst[11 : 7];
+            RS_imm <= {IC_inst[31 : 12], {12{1'b0}}};
+            // ROB
+            ROB_ouptut_valid <= `True;
+            ROB_inst_pc <= IC_inst_pc;
+            ROB_OP_ID <= `LUI;
+            ROB_rd <= IC_inst[11 : 7];
+            ROB_predicted_to_jump <= `False;
+            ROB_predicted_pc <= IC_inst_pc + 32'h4;
+        end
+        else if(opcode == `OPCODE_AUIPC) begin
+            // LSB
+            LSB_output_valid <= `False;
+            // RF
+            RF_rd_valid <= `True;
+            RF_rd <= IC_inst[11 : 7];
+            RF_rs1_valid <= `False;
+            RF_rs2_valid <= `False;
+            // RS
+            RS_output_valid <= `True;
+            RS_inst_pc <= IC_inst_pc;
+            RS_OP_ID <= `AUIPC;
+            RS_rd <= IC_inst[11 : 7];
+            RS_imm <= {IC_inst[31 : 12], {12{1'b0}}};
+            // ROB
+            ROB_ouptut_valid <= `True;
+            ROB_inst_pc <= IC_inst_pc;
+            ROB_OP_ID <= `AUIPC;
+            ROB_rd <= IC_inst[11 : 7];
+            ROB_predicted_to_jump <= `False;
+            ROB_predicted_pc <= IC_inst_pc + 32'h4;
+        end
+        else if(opcode == `OPCODE_JAL) begin
+            // LSB
+            LSB_output_valid <= `False;
+            // RF
+            RF_rd_valid <= `True;
+            RF_rd <= IC_inst[11 : 7];
+            RF_rs1_valid <= `False;
+            RF_rs2_valid <= `False;
+            // RS
+            RS_output_valid <= `True;
+            RS_inst_pc <= IC_inst_pc;
+            RS_OP_ID <= `JAL;
+            RS_rd <= IC_inst[11 : 7];
+            RS_imm <= {{12{IC_inst[31]}}, IC_inst[19:12], IC_inst[20], IC_inst[30:21], 1'b0};
+            // ROB
+            ROB_ouptut_valid <= `True;
+            ROB_inst_pc <= IC_inst_pc;
+            ROB_OP_ID <= `JAL;
+            ROB_rd <= IC_inst[11 : 7];
+            ROB_predicted_to_jump <= IC_predicted_to_jump;
+            ROB_predicted_pc <= IC_predicted_pc;
+        end
+        else if(opcode == `OPCODE_JALR) begin
+            // LSB
+            LSB_output_valid <= `False;
+            // RF
+            RF_rd_valid <= `True;
+            RF_rd <= IC_inst[11 : 7];
+            RF_rs1_valid <= `True;
+            RF_rs1 <= IC_inst[19 : 15];
+            RF_rs2_valid <= `False;
+            // RS
+            RS_output_valid <= `True;
+            RS_inst_pc <= IC_inst_pc;
+            RS_OP_ID <= `JALR;
+            RS_rd <= IC_inst[11 : 7];
+            RS_imm <= {{20{IC_inst[31]}}, IC_inst[31 : 20]};
+            // ROB
+            ROB_ouptut_valid <= `True;
+            ROB_inst_pc <= IC_inst_pc;
+            ROB_OP_ID <= `JALR;
+            ROB_rd <= IC_inst[11 : 7];
+            ROB_predicted_to_jump <= IC_predicted_to_jump;
+            ROB_predicted_pc <= IC_predicted_pc;
+        end
+        else if(opcode == `OPCODE_B) begin
+            // LSB
+            LSB_output_valid <= `False;
+            // RF
+            RF_rd_valid <= `False;
+            RF_rs1_valid <= `True;
+            RF_rs1 <= IC_inst[19 : 15];
+            RF_rs2_valid <= `True;
+            RF_rs2 <= IC_inst[24 : 20];
+            // RS
+            RS_output_valid <= `True;
+            RS_inst_pc <= IC_inst_pc;
+            RS_rd <= 5'b00000;
+            RS_imm <= {{20{IC_inst[31]}}, IC_inst[7], IC_inst[30:25], IC_inst[11:8], 1'b0};
+            // ROB
+            ROB_ouptut_valid <= `True;
+            ROB_inst_pc <= IC_inst_pc;
+            ROB_rd <= 5'b00000;
+            ROB_predicted_to_jump <= IC_predicted_to_jump;
+            ROB_predicted_pc <= IC_predicted_pc;
+            if(funct3 == `FUNCT3_BEQ) begin
+                RS_OP_ID <= `BEQ;
+                ROB_OP_ID <= `BEQ;
+            end
+            else if(funct3 == `FUNCT3_BNE) begin
+                RS_OP_ID <= `BNE;
+                ROB_OP_ID <= `BNE;
+            end
+            else if(funct3 == `FUNCT3_BLT) begin
+                RS_OP_ID <= `BLT;
+                ROB_OP_ID <= `BLT;
+            end
+            else if(funct3 == `FUNCT3_BGE) begin
+                RS_OP_ID <= `BGE;
+                ROB_OP_ID <= `BGE;
+            end
+            else if(funct3 == `FUNCT3_BLTU) begin
+                RS_OP_ID <= `BLTU;
+                ROB_OP_ID <= `BLTU;
+            end
+            else if(funct3 == `FUNCT3_BGEU) begin
+                RS_OP_ID <= `BGEU;
+                ROB_OP_ID <= `BGEU;
+            end
+        end     
+        else if(opcode == `OPCODE_L) begin
+            // LSB
+            LSB_output_valid <= `True;
+            LSB_inst_pc <= IC_inst_pc;
+            LSB_rd <= IC_inst[11 : 7];
+            LSB_imm <= {{20{IC_inst[31]}}, IC_inst[31:20]};
+            // RF
+            RF_rd_valid <= `True;
+            RF_rd <= IC_inst[11 : 7];
+            RF_rs1_valid <= `True;
+            RF_rs1 <= IC_inst[19 : 15];
+            RF_rs2_valid <= `False;
+            // RS
+            RS_output_valid <= `False;
+            // ROB
+            ROB_ouptut_valid <= `True;
+            ROB_inst_pc <= IC_inst_pc;
+            ROB_rd <= IC_inst[11 : 7];
+            ROB_predicted_to_jump <= `False;
+            ROB_predicted_pc <= IC_inst_pc + 32'h4;
+            if(funct3 == `FUNCT3_LB) begin
+                LSB_OP_ID <= `LB;
+                ROB_OP_ID <= `LB;
+            end
+            else if(funct3 == `FUNCT3_LH) begin
+                LSB_OP_ID <= `LH;
+                ROB_OP_ID <= `LH;
+            end
+            else if(funct3 == `FUNCT3_LW) begin
+                LSB_OP_ID <= `LW;
+                ROB_OP_ID <= `LW;
+            end
+            else if(funct3 == `FUNCT3_LBU) begin
+                LSB_OP_ID <= `LBU;
+                ROB_OP_ID <= `LBU;
+            end
+            else if(funct3 == `FUNCT3_LHU) begin
+                LSB_OP_ID <= `LHU;
+                ROB_OP_ID <= `LHU;
+            end
+        end
+        else if(opcode == `OPCODE_S) begin
+            // LSB
+            LSB_output_valid <= `True;
+            LSB_inst_pc <= IC_inst_pc;
+            LSB_rd <= 5'b00000;
+            LSB_imm <= {{20{IC_inst[31]}}, IC_inst[31 : 25], IC_inst[11 : 7]};
+            // RF
+            RF_rd_valid <= `False;
+            RF_rs1_valid <= `True;
+            RF_rs1 <= IC_inst[19 : 15];
+            RF_rs2_valid <= `True;
+            RF_rs2 <= IC_inst[24 : 20];
+            // RS
+            RS_output_valid <= `False;
+            // ROB
+            ROB_ouptut_valid <= `True;
+            ROB_inst_pc <= IC_inst_pc;
+            ROB_rd <= 5'b00000;
+            ROB_predicted_to_jump <= `False;
+            ROB_predicted_pc <= IC_inst_pc + 32'h4;
+            if(funct3 == `FUNCT3_SB) begin
+                LSB_OP_ID <= `SB;
+                ROB_OP_ID <= `SB;
+            end
+            else if(funct3 == `FUNCT3_SH) begin
+                LSB_OP_ID <= `SH;
+                ROB_OP_ID <= `SH;
+            end
+            else if(funct3 == `FUNCT3_SW) begin
+                LSB_OP_ID <= `SW;
+                ROB_OP_ID <= `SW;
+            end
+        end
+        else if(opcode == `OPCODE_R) begin
+            // LSB
+            LSB_output_valid <= `False;
+            // RF
+            RF_rd_valid <= `True;
+            RF_rd <= IC_inst[11 : 7];
+            RF_rs1_valid <= `True;
+            RF_rs1 <= IC_inst[19 : 15];
+            RF_rs2_valid <= `True;
+            RF_rs2 <= IC_inst[24 : 20];
+            // RS
+            RS_output_valid <= `True;
+            RS_inst_pc <= IC_inst_pc;
+            RS_rd <= IC_inst[11 : 7];
+            RS_imm <= {32{1'b0}};
+            // ROB
+            ROB_ouptut_valid <= `True;
+            ROB_inst_pc <= IC_inst_pc;
+            ROB_rd <= IC_inst[11 : 7];
+            ROB_predicted_to_jump <= `False;
+            ROB_predicted_pc <= IC_inst_pc + 32'h4;
+            if(funct3 == `FUNCT3_ADD) begin
+                if(funct7 == `FUNCT7_ADD) begin
+                    RS_OP_ID <= `ADD;
+                    ROB_OP_ID <= `ADD;
+                end
+                else if(funct7 == `FUNCT7_SUB) begin
+                    RS_OP_ID <= `SUB;
+                    ROB_OP_ID <= `SUB;
+                end
+            end
+            else if(funct3 == `FUNCT3_SLL) begin
+                RS_OP_ID <= `SLL;
+                ROB_OP_ID <= `SLL;
+            end
+            else if(funct3 == `FUNCT3_SLT) begin
+                RS_OP_ID <= `SLT;
+                ROB_OP_ID <= `SLT;
+            end
+            else if(funct3 == `FUNCT3_SLTU) begin
+                RS_OP_ID <= `SLTU;
+                ROB_OP_ID <= `SLTU;
+            end
+            else if(funct3 == `FUNCT3_XOR) begin
+                RS_OP_ID <= `XOR;
+                ROB_OP_ID <= `XOR;
+            end
+            else if(funct3 == `FUNCT3_SRL) begin
+                if(funct7 == `FUNCT7_SRL) begin
+                    RS_OP_ID <= `SRL;
+                    ROB_OP_ID <= `SRL;
+                end
+                else if(funct7 == `FUNCT7_SRA) begin
+                    RS_OP_ID <= `SRA;
+                    ROB_OP_ID <= `SRA;
+                end
+            end
+            else if(funct3 == `FUNCT3_OR) begin
+                RS_OP_ID <= `OR;
+                ROB_OP_ID <= `OR;
+            end
+            else if(funct3 == `FUNCT3_AND) begin
+                RS_OP_ID <= `AND;
+                ROB_OP_ID <= `AND;
+            end
+        end 
+        else if(opcode == `OPCODE_I) begin
+            // LSB
+            LSB_output_valid <= `True;
+            // RF
+            RF_rd_valid <= `True;
+            RF_rd <= IC_inst[11 : 7];
+            RF_rs1_valid <= `True;
+            RF_rs1 <= IC_inst[19 : 15];
+            RF_rs2_valid <= `False;
+            // RS
+            RS_output_valid <= `True;
+            RS_inst_pc <= IC_inst_pc;
+            RS_rd <= IC_inst[11 : 7];
+            if(funct3 == `FUNCT3_SLLI || funct3 == `FUNCT3_SRLI) RS_imm <= {{26{1'b0}}, IC_inst[25 : 20]};
+            else RS_imm <= {{20{IC_inst[31]}}, IC_inst[31 : 20]};
+            // ROB
+            ROB_ouptut_valid <= `True;
+            ROB_inst_pc <= IC_inst_pc;
+            ROB_rd <= IC_inst[11 : 7];
+            ROB_predicted_to_jump <= `False;
+            ROB_predicted_pc <= IC_inst_pc + 32'h4;
+            if(funct3 == `FUNCT3_ADDI) begin
+                RS_OP_ID <= `ADDI;
+                ROB_OP_ID <= `ADDI;
+            end
+            else if(funct3 == `FUNCT3_SLTI) begin
+                RS_OP_ID <= `SLTI;
+                ROB_OP_ID <= `SLTI;
+            end
+            else if(funct3 == `FUNCT3_SLTIU) begin
+                RS_OP_ID <= `SLTIU;
+                ROB_OP_ID <= `SLTIU;
+            end
+            else if(funct3 == `FUNCT3_XORI) begin
+                RS_OP_ID <= `XORI;
+                ROB_OP_ID <= `XORI;
+            end
+            else if(funct3 == `FUNCT3_ORI) begin
+                RS_OP_ID <= `ORI;
+                ROB_OP_ID <= `ORI;
+            end
+            else if(funct3 == `FUNCT3_ANDI) begin
+                RS_OP_ID <= `ANDI;
+                ROB_OP_ID <= `ANDI;
+            end
+            else if(funct3 == `FUNCT3_SLLI) begin
+                RS_OP_ID <= `SLLI;
+                ROB_OP_ID <= `SLLI;
+            end
+            else if(funct3 == `FUNCT3_SRLI) begin
+                if(funct7 == `FUNCT7_SRLI) begin
+                    RS_OP_ID <= `SRLI;
+                    ROB_OP_ID <= `SRLI;
+                end
+                else if(funct7 == `FUNCT7_SRAI) begin
+                    RS_OP_ID <= `SRAI;
+                    ROB_OP_ID <= `SRAI;
+                end
+            end
+        end
+        else begin
+        end
     end
     else begin
+        // LSB
+        LSB_output_valid <= `False;
+        // RF
+        RF_rd_valid <= `False;
+        RF_rs1_valid <= `False;
+        RF_rs2_valid <= `False;
+        // RS
+        RS_output_valid <= `False;
+        // ROB
+        ROB_ouptut_valid <= `False;
     end
 end
 
+/*
 always @(*) begin
     if(stall == 1'b1) begin
         IQ_enable = 1'b0;
@@ -120,11 +499,11 @@ always @(*) begin
             ROB_rd = inst[11:7];
             ROB_type = 3'b100;
             RF_rd_valid = 1'b1;
-            //RF_ind_rd = inst[11:7];
-            //RF_rs1_valid = 1'b1;
-            //RF_ind_rs1 = 5'b00000;
-            //RF_rs2_valid = 1'b1;
-            //RF_ind_rs2 = 5'b00000;
+            RF_ind_rd = inst[11:7];
+            RF_rs1_valid = 1'b1;
+            RF_ind_rs1 = 5'b00000;
+            RF_rs2_valid = 1'b1;
+            RF_ind_rs2 = 5'b00000;
             RF_rd_tag = ROB_tag;
             Dispatcher_imm = {{12{inst[31]}}, inst[19:12], inst[20], inst[30:21], 1'b0};
             Dispatcher_rd_tag = ROB_tag;
@@ -136,9 +515,9 @@ always @(*) begin
             ROB_rd = inst[11:7];
             ROB_type = 3'b100;
             RF_rd_valid = 1'b1;
-            //RF_ind_rd = inst[11:7];
-            //RF_rs1_valid = 1'b1;
-            //RF_ind_rs1 = inst[19:15];
+            RF_ind_rd = inst[11:7];
+            RF_rs1_valid = 1'b1;
+            RF_ind_rs1 = inst[19:15];
             RF_rs2_valid = 1'b1;
             RF_ind_rs2 = 5'b00000;
             RF_rd_tag = ROB_tag;
@@ -152,11 +531,11 @@ always @(*) begin
             else if(funct3 == `FUNCT3_BGE) Dispatcher_OP_ID = `BGE;
             else if(funct3 == `FUNCT3_BLTU) Dispatcher_OP_ID = `BLTU;
             else if(funct3 == `FUNCT3_BGEU) Dispatcher_OP_ID = `BGEU;
-            //ROB_enable = 1'b1;
-            //ROB_ready = 1'b0;
-            //ROB_rd = inst[11:7];
-            //ROB_type = 3'b001;
-            //RF_rd_valid = 1'b0;
+            ROB_enable = 1'b1;
+            ROB_ready = 1'b0;
+            ROB_rd = inst[11:7];
+            ROB_type = 3'b001;
+            RF_rd_valid = 1'b0;
             RF_ind_rd = 5'b00000;
             RF_rs1_valid = 1'b1;
             RF_ind_rs1 = inst[19:15];
@@ -277,5 +656,6 @@ always @(*) begin
         end
     end
 end
+*/
 
 endmodule

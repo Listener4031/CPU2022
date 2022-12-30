@@ -4,7 +4,7 @@
 `define InstWidth 32
 `define AddrWidth 32
 `define RegIndexBus 4 : 0
-`define OpIdBus 5:0
+`define OpIdBus 5 : 0
 `define ImmWidth 32
 `define OpcodeBus 6 : 0
 `define Funct3Bus 2 : 0
@@ -19,6 +19,12 @@
 `define RSIndexBus 3 : 0
 
 `define RegSize 32
+
+`define PDCSize 256
+//define PDCIndexBus 
+
+`define LSBSize 16
+`define LSBIndexBus 3 : 0
 
 //instruction set
 `define NOP     6'd0
@@ -67,6 +73,8 @@
 `define SRAI    6'd37
 
 //opcode
+`define OpcodeBus 6 : 0
+
 `define OPCODE_LUI    7'b0110111
 `define OPCODE_AUIPC  7'b0010111
 `define OPCODE_JAL    7'b1101111

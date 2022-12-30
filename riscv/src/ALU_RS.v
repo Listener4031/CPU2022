@@ -8,80 +8,172 @@ module ALU_RS(
     // RsvStation
     input wire RS_input_valid,
     input wire [`OpIdBus] RS_OP_ID,
-    input wire [`DataWidth - 1 : 0] RS_pc,
+    input wire [`DataWidth - 1 : 0] RS_inst_pc,
     input wire [`DataWidth - 1 : 0] RS_reg_rs1,
     input wire [`DataWidth - 1 : 0] RS_reg_rs2,
     input wire [`ImmWidth - 1 : 0] RS_imm,
     input wire [`ROBIDBus] RS_ROB_id,
 
     // ReorderBuffer
-    output reg ROB_enable,
+    output reg ROB_ouptut_valid,
     output reg [`ROBIDBus] ROB_ROB_id,
-    output reg [`DataWidth - 1 : 0] ROB_value
+    output reg [`DataWidth - 1 : 0] ROB_value,
+    output reg [`AddrWidth - 1 : 0] ROB_targeted_pc,
+    output reg ROB_jump_flag
 );
 
 always @(posedge clk) begin
-    ROB_enable <= RS_input_valid;
     if(rst == `True) begin
     end
+    else if(rdy == `False) begin
+    end
     else if(RS_input_valid == `True) begin
+        ROB_ouptut_valid <= `True;
+        ROB_ROB_id <= RS_ROB_id;
         if(RS_OP_ID == `LUI) begin
+            ROB_value <= RS_imm;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `AUIPC) begin
+            ROB_value <= RS_inst_pc + RS_imm;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `JAL) begin
+            ROB_value <= RS_inst_pc + 32'h4;
+            ROB_targeted_pc <= RS_inst_pc + RS_imm;
+            ROB_jump_flag <= `True;
         end
         else if(RS_OP_ID == `JALR) begin
+            ROB_value <= RS_inst_pc + 32'h4;
+            ROB_targeted_pc <= RS_reg_rs1 + RS_imm;
+            ROB_jump_flag <= `True;
         end
         else if(RS_OP_ID == `BEQ) begin
+            ROB_value <= (RS_reg_rs1 == RS_reg_rs2);
+            ROB_targeted_pc <= RS_inst_pc + RS_imm;
+            ROB_jump_flag <= (RS_reg_rs1 == RS_reg_rs2) ? `True : `False;
         end
         else if(RS_OP_ID == `BNE) begin
+            ROB_value <= (RS_reg_rs1 != RS_reg_rs2);
+            ROB_targeted_pc <= RS_inst_pc + RS_imm;
+            ROB_jump_flag <= (RS_reg_rs1 != RS_reg_rs2) ? `True : `False;
         end
         else if(RS_OP_ID == `BLT) begin
+            ROB_value <= ($signed(RS_reg_rs1) < $signed(RS_reg_rs2));
+            ROB_targeted_pc <= RS_inst_pc + RS_imm;
+            ROB_jump_flag <= ($signed(RS_reg_rs1) < $signed(RS_reg_rs2)) ? `True : `False;
         end
         else if(RS_OP_ID == `BGE) begin
+            ROB_value <= ($signed(RS_reg_rs1) >= $signed(RS_reg_rs2));
+            ROB_targeted_pc <= RS_inst_pc + RS_imm;
+            ROB_jump_flag <= ($signed(RS_reg_rs1) >= $signed(RS_reg_rs2)) ? `True : `False;
         end
         else if(RS_OP_ID == `BLTU) begin
+            ROB_value <= (RS_reg_rs1 < RS_reg_rs2);
+            ROB_targeted_pc <= RS_inst_pc + RS_imm;
+            ROB_jump_flag <= (RS_reg_rs1 < RS_reg_rs2) ? `True : `False;
         end
         else if(RS_OP_ID == `BGEU) begin
+            ROB_value <= (RS_reg_rs1 >= RS_reg_rs2);
+            ROB_targeted_pc <= RS_inst_pc + RS_imm;
+            ROB_jump_flag <= (RS_reg_rs1 >= RS_reg_rs2) ? `True : `False;
         end
         else if(RS_OP_ID == `ADD) begin
+            ROB_value = RS_reg_rs1 + RS_reg_rs2;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `SUB) begin
+            ROB_value = RS_reg_rs1 - RS_reg_rs2;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `SLL) begin
+            ROB_value = RS_reg_rs1 << RS_reg_rs2;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `SLT) begin
+            ROB_value <= ($signed(RS_reg_rs1) < $signed(RS_reg_rs2));
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `SLTU) begin
+            ROB_value <= (RS_reg_rs1 < RS_reg_rs2);
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `XOR) begin
+            ROB_value <= RS_reg_rs1 ^ RS_reg_rs2;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `SRL) begin
+            ROB_value <= RS_reg_rs1 >> RS_reg_rs2;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `SRA) begin
+            ROB_value <= RS_reg_rs1 >>> RS_reg_rs2;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `OR) begin
+            ROB_value <= RS_reg_rs1 | RS_reg_rs2;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `AND) begin
+            ROB_value <= RS_reg_rs1 & RS_reg_rs2;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `ADDI) begin
+            ROB_value <= RS_reg_rs1 + RS_imm;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `SLTI) begin
+            ROB_value <= ($signed(RS_reg_rs1) < $signed(RS_imm));
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `SLTIU) begin
+            ROB_value <= (RS_reg_rs1 < RS_imm);
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `XORI) begin
+            ROB_value <= RS_reg_rs1 ^ RS_imm;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `ORI) begin
+            ROB_value <= RS_reg_rs1 | RS_imm;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `ANDI) begin
+            ROB_value <= RS_reg_rs1 & RS_imm;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `SLLI) begin
+            ROB_value <= RS_reg_rs1 << RS_imm;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `SRLI) begin
+            ROB_value <= RS_reg_rs1 >> RS_imm;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
         else if(RS_OP_ID == `SRAI) begin
+            ROB_value <= RS_reg_rs1 >>> RS_imm;
+            ROB_targeted_pc <= RS_inst_pc + 32'h4;
+            ROB_jump_flag <= `False;
         end
     end
 end

@@ -11,11 +11,10 @@ module InstFetcher(
 
     // Predictor
     input wire PDC_need_jump,
-    input wire [`AddrWidth - 1 : 0] PDC_jumped_pc,
+    input wire [`AddrWidth - 1 : 0] PDC_predicted_imm,
     output reg [`InstWidth - 1 : 0] PDC_inst,
     output reg [`AddrWidth - 1 : 0] PDC_pc
     
 );
-
 
 endmodule
