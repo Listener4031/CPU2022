@@ -18,8 +18,8 @@ module ALU_RS(
     output reg ROB_ouptut_valid,
     output reg [`ROBIDBus] ROB_ROB_id,
     output reg [`DataWidth - 1 : 0] ROB_value,
-    output reg [`AddrWidth - 1 : 0] ROB_targeted_pc,
-    output reg ROB_jump_flag
+    output reg [`AddrWidth - 1 : 0] ROB_targeted_pc, // pc should to be 
+    output reg ROB_jump_flag                         // 是否要跳转
 );
 
 always @(posedge clk) begin
@@ -175,6 +175,9 @@ always @(posedge clk) begin
             ROB_targeted_pc <= RS_inst_pc + 32'h4;
             ROB_jump_flag <= `False;
         end
+    end
+    else begin
+        ROB_ouptut_valid <= `False;
     end
 end
 

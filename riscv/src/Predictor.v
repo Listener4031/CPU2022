@@ -7,7 +7,7 @@ module Predictor(
 
     // InstFetcher
     input wire [`InstWidth - 1 : 0] IF_inst,
-    input wire [`AddrWidth - 1 : 0] IF_pc,
+    input wire [`AddrWidth - 1 : 0] IF_inst_pc,
     output reg IF_need_jump,
     output reg [`AddrWidth - 1 : 0] IF_predicted_imm,
 
@@ -25,7 +25,7 @@ always @(*) begin
         IF_predicted_imm = {{12{IF_inst[31]}}, IF_inst[19 : 12], IF_inst[20], IF_inst[30 : 21], 1'b0};
     end
     else if(IF_inst[`OpcodeBus] == `OPCODE_B) begin
-        IF_need_jump = pdc[IF_pc[9 : 2]][1];
+        IF_need_jump = pdc[IF_inst_pc[9 : 2]][1];
         IF_predicted_imm = {{20{IF_inst[31]}}, IF_inst[7], IF_inst[30 : 25], IF_inst[11 : 8], 1'b0};
     end
     else begin
@@ -41,6 +41,8 @@ always @(posedge clk) begin
         for(i = 0; i < `PDCSize; i = i + 1) begin
             pdc[i] <= 2'b01;
         end
+    end
+    else if(rdy == `False) begin
     end
     else if(ROB_input_valid == `True) begin
         if(pdc[ROB_pc[9 : 2]] == 2'b00) begin

@@ -6,7 +6,7 @@ module LSBuffer(
     input wire rdy,
 
     // InstCache
-    output reg IC_LSB_is_full,
+    output reg IQ_LSB_is_full,
 
     // Decoder
     input wire ID_input_valid,
@@ -35,6 +35,7 @@ module LSBuffer(
     input wire [`RegIndexBus] ROB_value,
 
     // ALU_LS
+    input wire ALU_ready,
     output reg ALU_output_valid,
     output reg [`OpIdBus] ALU_OP_ID,
     output reg [`DataWidth - 1 : 0] ALU_inst_pc,
@@ -77,13 +78,13 @@ assign ready_judger[14] = ((rs1_valid_judger[14] == `True) && (rs2_valid_judger[
 assign ready_judger[15] = ((rs1_valid_judger[15] == `True) && (rs2_valid_judger[15] == `True)) ? `True : `False;
 
 wire LSB_is_full;
-assign LSB_is_full = (siz == 5'b10000 && ready_judger[head] == `False) ? `True : `False;
+assign LSB_is_full = (siz == 5'b10000 && (ready_judger[head] == `False || ALU_ready == `False)) ? `True : `False;
 
-wire in_queue_pos;
+wire [`LSBIndexBus] in_queue_pos;
 assign in_queue_pos = (tail == 4'b1111) ? 4'b0000 : (tail + 4'b0001);
 
 always @(*) begin
-    IC_LSB_is_full = LSB_is_full;
+    IQ_LSB_is_full = LSB_is_full;
 end
 
 integer i;
@@ -127,11 +128,11 @@ always @(posedge clk) begin
             end
         end
         if(ID_input_valid == `True) begin
-            if(siz != 5'b00000 && ready_judger[head] == `True) siz <= siz;
+            if(siz != 5'b00000 && ready_judger[head] == `True && ALU_ready == `True) siz <= siz;
             else siz <= siz + 5'b00001;
         end
         else begin
-            if(siz != 5'b00000 && ready_judger[head] == `True) siz <= siz - 5'b00001;
+            if(siz != 5'b00000 && ready_judger[head] == `True && ALU_ready == `True) siz <= siz - 5'b00001;
             else siz <= siz;
         end
         if(ID_input_valid == `True) begin
@@ -158,7 +159,7 @@ always @(posedge clk) begin
             imms[in_queue_pos] <= ID_imm;
             tail <= in_queue_pos;
         end
-        if(siz != 5'b00000 && ready_judger[head] == `True) begin
+        if(siz != 5'b00000 && ready_judger[head] == `True && ALU_ready == `True) begin
             head <= (head == 4'b1111) ? 4'b0000 : (head + 4'b0001);
             ALU_output_valid <= `True;
             ALU_OP_ID <= OP_IDs[head];

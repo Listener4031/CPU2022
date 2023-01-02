@@ -14,8 +14,8 @@ module InstQueue(
     // LSBuffer
     input wire LSB_is_full,
 
-    // MemControllor
-    output reg MC_IQ_is_full,                        
+    // InstFetcher
+    output reg IF_IQ_is_full,                        
 
     // InstFetcher
     input wire IF_input_valid,
@@ -43,21 +43,21 @@ wire not_launch_inst;
 assign not_launch_inst = (siz == 5'b00000 || ROB_is_full == `True || (is_LSB == `False && RS_is_full) || (is_LSB == `True && LSB_is_full)) ? `True : `False;
 
 reg [4 : 0] siz;
-reg [`ICIndexBus] head;
-reg [`ICIndexBus] tail;
-reg [`InstWidth - 1 : 0] insts[`ICSize - 1 : 0];
-reg [`AddrWidth - 1 : 0] inst_pcs[`ICSize - 1 : 0];
-reg [`ICSize - 1 : 0] predicted_jump_judger;
-reg [`AddrWidth - 1 : 0] predicted_pcs[`ICSize - 1 : 0];
+reg [`IQIndexBus] head;
+reg [`IQIndexBus] tail;
+reg [`InstWidth - 1 : 0] insts[`IQSize - 1 : 0];
+reg [`AddrWidth - 1 : 0] inst_pcs[`IQSize - 1 : 0];
+reg [`IQSize - 1 : 0] predicted_jump_judger;
+reg [`AddrWidth - 1 : 0] predicted_pcs[`IQSize - 1 : 0];
 
-wire in_queue_pos;
+wire [`IQIndexBus] in_queue_pos;
 assign in_queue_pos = (tail == 4'b1111) ? 4'b0000 : (tail + 4'b0001);
 
 wire IQ_is_full;
 assign IQ_is_full = (siz == 5'b10000 && not_launch_inst == `True);
 
 always @(*) begin
-    MC_IQ_is_full = IQ_is_full;
+    IF_IQ_is_full = IQ_is_full;
 end
 
 always @(posedge clk) begin

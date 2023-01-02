@@ -6,7 +6,7 @@ module ReorderBuffer(
     input wire rdy,
 
     // InstCache
-    output reg IC_ROB_is_full,
+    output reg IQ_ROB_is_full,
 
     // Decoder
     input wire ID_input_valid,           // `True -> 队尾申请
@@ -35,11 +35,23 @@ module ReorderBuffer(
     input wire [`AddrWidth - 1 : 0] ALU_RS_targeted_pc,
     input wire ALU_RS_jump_flag,                        // 当前指令是不是要跳转
 
+    // ALU_LS
+    input wire ALU_LS_input_valid,
+    input wire [`ROBIDBus] ALU_LS_ROB_id,
+    input wire [`DataWidth - 1 : 0] ALU_LS_value,
+    input wire [`AddrWidth - 1 : 0] ALU_LS_addr,
+
     // RegFile
     output reg [`ROBIndexBus] RF_ROB_id,         // 当前的
     output reg RF_output_valid,
     output reg [`RegIndexBus] RF_rd,
-    output reg [`DataWidth - 1 : 0] RF_value
+    output reg [`DataWidth - 1 : 0] RF_value,
+
+    // MemControllor
+    output reg MC_output_valid,
+    output reg [`OpIdBus] MC_OP_ID,
+    output reg [`DataWidth - 1 : 0] MC_value,
+    output reg [`AddrWidth - 1 : 0] MC_addr
 );
 
 reg [4 : 0] siz; 
@@ -57,7 +69,7 @@ reg [`AddrWidth - 1 : 0] predicted_pcs[`ROBSize - 1 : 0]; // jal, jalr, br
 wire ROB_is_full;
 assign ROB_is_full = ((siz == 5'b10000) && (ready_judger[head] == `False)) ? `True : `False;
 
-wire in_queue_pos;
+wire [`ROBIndexBus] in_queue_pos;
 assign in_queue_pos = (tail == 4'b1111) ? 4'b0000 : (tail + 4'b0001);
 
 wire roll_back_flag;
@@ -78,7 +90,7 @@ assign will_launch_to_RF = (OP_IDs[head] == `LUI || OP_IDs[head] == `AUIPC || OP
                                || OP_IDs[head] == `SLLI || OP_IDs[head] == `SRLI || OP_IDs[head] == `SRAI) ? `True : `False;
 
 always @(*) begin
-    IC_ROB_is_full = ROB_is_full;
+    IQ_ROB_is_full = ROB_is_full;
 end
 
 integer i;
@@ -115,9 +127,9 @@ always @(posedge clk) begin
             if(siz != 5'b00000 && ready_judger[head] == `True) siz <= siz - 5'b00001;
             else siz <= siz;
         end
-        RS_ROB_id <= in_queue_pos;
-        LSB_ROB_id <= in_queue_pos;
-        RF_ROB_id <= in_queue_pos;
+        // RS_ROB_id <= in_queue_pos;
+        // LSB_ROB_id <= in_queue_pos;
+        // RF_ROB_id <= in_queue_pos;
         if(ID_input_valid <= `True) begin
             ready_judger[in_queue_pos] <= `False;
             OP_IDs[in_queue_pos] <= ID_OP_ID;
@@ -130,29 +142,59 @@ always @(posedge clk) begin
         if(siz != 5'b00000 && ready_judger[head] == `True) begin // 发射队首指令
             head <= (head == 4'b1111) ? 4'b0000 : (head + 4'b0001);
             if(will_launch_to_RF == `True) begin
+                // RS
                 RS_output_valid <= `True;
                 RS_update_ROB_id <= head;
                 RS_value <= values[head];
+                // LSB
                 LSB_output_valid <= `True;
                 LSB_update_ROB_id <= head;
                 LSB_value <= values[head];
+                // RF
                 RF_output_valid <= `True;
                 RF_rd <= rds[head];
                 RF_value <= values[head];
+                // MC
+                MC_output_valid <= `False;
             end
             else begin
+                // RS
                 RS_output_valid <= `False;
+                // LSB
                 LSB_output_valid <= `False;
+                // RF
                 RF_output_valid <= `False;
+                // MC
+                MC_output_valid <= `True;
+                MC_OP_ID <= OP_IDs[head];
+                MC_value <= values[head];
+                MC_addr <= addrs[head];
             end
+        end
+        else begin
+            RS_output_valid <= `False;
+            LSB_output_valid <= `False;
+            RF_output_valid <= `False;
+            MC_output_valid <= `False;
         end
         if(ALU_RS_input_valid == `True) begin
             ready_judger[ALU_RS_ROB_id] <= `True;
             values[ALU_RS_ROB_id] <= ALU_RS_value;
         end
+        if(ALU_LS_input_valid == `True) begin
+            ready_judger[ALU_LS_ROB_id] <= `True;
+            values[ALU_LS_ROB_id] <= ALU_LS_value;
+            addrs[ALU_LS_ROB_id] <= ALU_LS_addr;
+        end
     end
     else begin // roll back, modify pc
     end
+end
+
+always @(*) begin
+    RS_ROB_id = in_queue_pos;
+    LSB_ROB_id = in_queue_pos;
+    RF_ROB_id = in_queue_pos;
 end
 
 endmodule

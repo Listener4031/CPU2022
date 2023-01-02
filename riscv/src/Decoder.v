@@ -6,11 +6,11 @@ module Decoder(
     input wire rdy,
 
     // InstCache
-    input wire IC_input_valid,                    // `True -> IC_inst could be used
-    input wire [`InstWidth - 1 : 0] IC_inst,
-    input wire [`AddrWidth - 1 : 0] IC_inst_pc,
-    input wire IC_predicted_to_jump,
-    input wire [`AddrWidth - 1 : 0] IC_predicted_pc,
+    input wire IQ_input_valid,                    // `True -> IQ_inst could be used
+    input wire [`InstWidth - 1 : 0] IQ_inst,
+    input wire [`AddrWidth - 1 : 0] IQ_inst_pc,
+    input wire IQ_predicted_to_jump,
+    input wire [`AddrWidth - 1 : 0] IQ_predicted_pc,
     
     // LSBuffer
     output reg LSB_output_valid,
@@ -35,7 +35,7 @@ module Decoder(
     output reg [`ImmWidth - 1 : 0] RS_imm,
 
     // ReorderBuffer
-    output reg ROB_ouptut_valid,                  // `False -> 不进队
+    output reg ROB_output_valid,                    // `False -> 不进队
     output reg [`DataWidth - 1 : 0] ROB_inst_pc,
     output reg [`OpIdBus] ROB_OP_ID,
     output reg [`RegIndexBus] ROB_rd,
@@ -44,11 +44,11 @@ module Decoder(
 );
 
 wire [`OpcodeBus] opcode;
-assign opcode = IC_inst[6 : 0];
+assign opcode = IQ_inst[6 : 0];
 wire [`Funct3Bus] funct3;
-assign funct3 = IC_inst[14 : 12];
+assign funct3 = IQ_inst[14 : 12];
 wire [`Funct7Bus] funct7;
-assign funct7 = IC_inst[31 : 25];
+assign funct7 = IQ_inst[31 : 25];
 
 /*
     output reg LSB_output_valid,
@@ -70,7 +70,7 @@ assign funct7 = IC_inst[31 : 25];
     output reg [`RegIndexBus] RS_rd,
     output reg [`ImmWidth - 1 : 0] RS_imm,
 
-    output reg ROB_ouptut_valid,                  // `False -> 不进队
+    output reg ROB_output_valid,                  // `False -> 不进队
     output reg [`DataWidth - 1 : 0] ROB_inst_pc,
     output reg [`OpIdBus] ROB_OP_ID,
     output reg ROB_predicted_to_jump,
@@ -82,95 +82,95 @@ always @(posedge clk) begin
     end
     else if(rdy == `False) begin
     end
-    else if(IC_input_valid == `True) begin
+    else if(IQ_input_valid == `True) begin
         if(opcode == `OPCODE_LUI) begin
             // LSB
             LSB_output_valid <= `False;
             // RF
             RF_rd_valid <= `True;
-            RF_rd <= IC_inst[11 : 7];
+            RF_rd <= IQ_inst[11 : 7];
             RF_rs1_valid <= `False;
             RF_rs2_valid <= `False;
             // RS
             RS_output_valid <= `True;
-            RS_inst_pc <= IC_inst_pc;
+            RS_inst_pc <= IQ_inst_pc;
             RS_OP_ID <= `LUI;
-            RS_rd <= IC_inst[11 : 7];
-            RS_imm <= {IC_inst[31 : 12], {12{1'b0}}};
+            RS_rd <= IQ_inst[11 : 7];
+            RS_imm <= {IQ_inst[31 : 12], {12{1'b0}}};
             // ROB
-            ROB_ouptut_valid <= `True;
-            ROB_inst_pc <= IC_inst_pc;
+            ROB_output_valid <= `True;
+            ROB_inst_pc <= IQ_inst_pc;
             ROB_OP_ID <= `LUI;
-            ROB_rd <= IC_inst[11 : 7];
+            ROB_rd <= IQ_inst[11 : 7];
             ROB_predicted_to_jump <= `False;
-            ROB_predicted_pc <= IC_inst_pc + 32'h4;
+            ROB_predicted_pc <= IQ_inst_pc + 32'h4;
         end
         else if(opcode == `OPCODE_AUIPC) begin
             // LSB
             LSB_output_valid <= `False;
             // RF
             RF_rd_valid <= `True;
-            RF_rd <= IC_inst[11 : 7];
+            RF_rd <= IQ_inst[11 : 7];
             RF_rs1_valid <= `False;
             RF_rs2_valid <= `False;
             // RS
             RS_output_valid <= `True;
-            RS_inst_pc <= IC_inst_pc;
+            RS_inst_pc <= IQ_inst_pc;
             RS_OP_ID <= `AUIPC;
-            RS_rd <= IC_inst[11 : 7];
-            RS_imm <= {IC_inst[31 : 12], {12{1'b0}}};
+            RS_rd <= IQ_inst[11 : 7];
+            RS_imm <= {IQ_inst[31 : 12], {12{1'b0}}};
             // ROB
-            ROB_ouptut_valid <= `True;
-            ROB_inst_pc <= IC_inst_pc;
+            ROB_output_valid <= `True;
+            ROB_inst_pc <= IQ_inst_pc;
             ROB_OP_ID <= `AUIPC;
-            ROB_rd <= IC_inst[11 : 7];
+            ROB_rd <= IQ_inst[11 : 7];
             ROB_predicted_to_jump <= `False;
-            ROB_predicted_pc <= IC_inst_pc + 32'h4;
+            ROB_predicted_pc <= IQ_inst_pc + 32'h4;
         end
         else if(opcode == `OPCODE_JAL) begin
             // LSB
             LSB_output_valid <= `False;
             // RF
             RF_rd_valid <= `True;
-            RF_rd <= IC_inst[11 : 7];
+            RF_rd <= IQ_inst[11 : 7];
             RF_rs1_valid <= `False;
             RF_rs2_valid <= `False;
             // RS
             RS_output_valid <= `True;
-            RS_inst_pc <= IC_inst_pc;
+            RS_inst_pc <= IQ_inst_pc;
             RS_OP_ID <= `JAL;
-            RS_rd <= IC_inst[11 : 7];
-            RS_imm <= {{12{IC_inst[31]}}, IC_inst[19:12], IC_inst[20], IC_inst[30:21], 1'b0};
+            RS_rd <= IQ_inst[11 : 7];
+            RS_imm <= {{12{IQ_inst[31]}}, IQ_inst[19:12], IQ_inst[20], IQ_inst[30:21], 1'b0};
             // ROB
-            ROB_ouptut_valid <= `True;
-            ROB_inst_pc <= IC_inst_pc;
+            ROB_output_valid <= `True;
+            ROB_inst_pc <= IQ_inst_pc;
             ROB_OP_ID <= `JAL;
-            ROB_rd <= IC_inst[11 : 7];
-            ROB_predicted_to_jump <= IC_predicted_to_jump;
-            ROB_predicted_pc <= IC_predicted_pc;
+            ROB_rd <= IQ_inst[11 : 7];
+            ROB_predicted_to_jump <= IQ_predicted_to_jump;
+            ROB_predicted_pc <= IQ_predicted_pc;
         end
         else if(opcode == `OPCODE_JALR) begin
             // LSB
             LSB_output_valid <= `False;
             // RF
             RF_rd_valid <= `True;
-            RF_rd <= IC_inst[11 : 7];
+            RF_rd <= IQ_inst[11 : 7];
             RF_rs1_valid <= `True;
-            RF_rs1 <= IC_inst[19 : 15];
+            RF_rs1 <= IQ_inst[19 : 15];
             RF_rs2_valid <= `False;
             // RS
             RS_output_valid <= `True;
-            RS_inst_pc <= IC_inst_pc;
+            RS_inst_pc <= IQ_inst_pc;
             RS_OP_ID <= `JALR;
-            RS_rd <= IC_inst[11 : 7];
-            RS_imm <= {{20{IC_inst[31]}}, IC_inst[31 : 20]};
+            RS_rd <= IQ_inst[11 : 7];
+            RS_imm <= {{20{IQ_inst[31]}}, IQ_inst[31 : 20]};
             // ROB
-            ROB_ouptut_valid <= `True;
-            ROB_inst_pc <= IC_inst_pc;
+            ROB_output_valid <= `True;
+            ROB_inst_pc <= IQ_inst_pc;
             ROB_OP_ID <= `JALR;
-            ROB_rd <= IC_inst[11 : 7];
-            ROB_predicted_to_jump <= IC_predicted_to_jump;
-            ROB_predicted_pc <= IC_predicted_pc;
+            ROB_rd <= IQ_inst[11 : 7];
+            ROB_predicted_to_jump <= IQ_predicted_to_jump;
+            ROB_predicted_pc <= IQ_predicted_pc;
         end
         else if(opcode == `OPCODE_B) begin
             // LSB
@@ -178,20 +178,20 @@ always @(posedge clk) begin
             // RF
             RF_rd_valid <= `False;
             RF_rs1_valid <= `True;
-            RF_rs1 <= IC_inst[19 : 15];
+            RF_rs1 <= IQ_inst[19 : 15];
             RF_rs2_valid <= `True;
-            RF_rs2 <= IC_inst[24 : 20];
+            RF_rs2 <= IQ_inst[24 : 20];
             // RS
             RS_output_valid <= `True;
-            RS_inst_pc <= IC_inst_pc;
+            RS_inst_pc <= IQ_inst_pc;
             RS_rd <= 5'b00000;
-            RS_imm <= {{20{IC_inst[31]}}, IC_inst[7], IC_inst[30:25], IC_inst[11:8], 1'b0};
+            RS_imm <= {{20{IQ_inst[31]}}, IQ_inst[7], IQ_inst[30:25], IQ_inst[11:8], 1'b0};
             // ROB
-            ROB_ouptut_valid <= `True;
-            ROB_inst_pc <= IC_inst_pc;
+            ROB_output_valid <= `True;
+            ROB_inst_pc <= IQ_inst_pc;
             ROB_rd <= 5'b00000;
-            ROB_predicted_to_jump <= IC_predicted_to_jump;
-            ROB_predicted_pc <= IC_predicted_pc;
+            ROB_predicted_to_jump <= IQ_predicted_to_jump;
+            ROB_predicted_pc <= IQ_predicted_pc;
             if(funct3 == `FUNCT3_BEQ) begin
                 RS_OP_ID <= `BEQ;
                 ROB_OP_ID <= `BEQ;
@@ -220,23 +220,23 @@ always @(posedge clk) begin
         else if(opcode == `OPCODE_L) begin
             // LSB
             LSB_output_valid <= `True;
-            LSB_inst_pc <= IC_inst_pc;
-            LSB_rd <= IC_inst[11 : 7];
-            LSB_imm <= {{20{IC_inst[31]}}, IC_inst[31:20]};
+            LSB_inst_pc <= IQ_inst_pc;
+            LSB_rd <= IQ_inst[11 : 7];
+            LSB_imm <= {{20{IQ_inst[31]}}, IQ_inst[31:20]};
             // RF
             RF_rd_valid <= `True;
-            RF_rd <= IC_inst[11 : 7];
+            RF_rd <= IQ_inst[11 : 7];
             RF_rs1_valid <= `True;
-            RF_rs1 <= IC_inst[19 : 15];
+            RF_rs1 <= IQ_inst[19 : 15];
             RF_rs2_valid <= `False;
             // RS
             RS_output_valid <= `False;
             // ROB
-            ROB_ouptut_valid <= `True;
-            ROB_inst_pc <= IC_inst_pc;
-            ROB_rd <= IC_inst[11 : 7];
+            ROB_output_valid <= `True;
+            ROB_inst_pc <= IQ_inst_pc;
+            ROB_rd <= IQ_inst[11 : 7];
             ROB_predicted_to_jump <= `False;
-            ROB_predicted_pc <= IC_inst_pc + 32'h4;
+            ROB_predicted_pc <= IQ_inst_pc + 32'h4;
             if(funct3 == `FUNCT3_LB) begin
                 LSB_OP_ID <= `LB;
                 ROB_OP_ID <= `LB;
@@ -261,23 +261,23 @@ always @(posedge clk) begin
         else if(opcode == `OPCODE_S) begin
             // LSB
             LSB_output_valid <= `True;
-            LSB_inst_pc <= IC_inst_pc;
+            LSB_inst_pc <= IQ_inst_pc;
             LSB_rd <= 5'b00000;
-            LSB_imm <= {{20{IC_inst[31]}}, IC_inst[31 : 25], IC_inst[11 : 7]};
+            LSB_imm <= {{20{IQ_inst[31]}}, IQ_inst[31 : 25], IQ_inst[11 : 7]};
             // RF
             RF_rd_valid <= `False;
             RF_rs1_valid <= `True;
-            RF_rs1 <= IC_inst[19 : 15];
+            RF_rs1 <= IQ_inst[19 : 15];
             RF_rs2_valid <= `True;
-            RF_rs2 <= IC_inst[24 : 20];
+            RF_rs2 <= IQ_inst[24 : 20];
             // RS
             RS_output_valid <= `False;
             // ROB
-            ROB_ouptut_valid <= `True;
-            ROB_inst_pc <= IC_inst_pc;
+            ROB_output_valid <= `True;
+            ROB_inst_pc <= IQ_inst_pc;
             ROB_rd <= 5'b00000;
             ROB_predicted_to_jump <= `False;
-            ROB_predicted_pc <= IC_inst_pc + 32'h4;
+            ROB_predicted_pc <= IQ_inst_pc + 32'h4;
             if(funct3 == `FUNCT3_SB) begin
                 LSB_OP_ID <= `SB;
                 ROB_OP_ID <= `SB;
@@ -296,22 +296,22 @@ always @(posedge clk) begin
             LSB_output_valid <= `False;
             // RF
             RF_rd_valid <= `True;
-            RF_rd <= IC_inst[11 : 7];
+            RF_rd <= IQ_inst[11 : 7];
             RF_rs1_valid <= `True;
-            RF_rs1 <= IC_inst[19 : 15];
+            RF_rs1 <= IQ_inst[19 : 15];
             RF_rs2_valid <= `True;
-            RF_rs2 <= IC_inst[24 : 20];
+            RF_rs2 <= IQ_inst[24 : 20];
             // RS
             RS_output_valid <= `True;
-            RS_inst_pc <= IC_inst_pc;
-            RS_rd <= IC_inst[11 : 7];
+            RS_inst_pc <= IQ_inst_pc;
+            RS_rd <= IQ_inst[11 : 7];
             RS_imm <= {32{1'b0}};
             // ROB
-            ROB_ouptut_valid <= `True;
-            ROB_inst_pc <= IC_inst_pc;
-            ROB_rd <= IC_inst[11 : 7];
+            ROB_output_valid <= `True;
+            ROB_inst_pc <= IQ_inst_pc;
+            ROB_rd <= IQ_inst[11 : 7];
             ROB_predicted_to_jump <= `False;
-            ROB_predicted_pc <= IC_inst_pc + 32'h4;
+            ROB_predicted_pc <= IQ_inst_pc + 32'h4;
             if(funct3 == `FUNCT3_ADD) begin
                 if(funct7 == `FUNCT7_ADD) begin
                     RS_OP_ID <= `ADD;
@@ -359,25 +359,25 @@ always @(posedge clk) begin
         end 
         else if(opcode == `OPCODE_I) begin
             // LSB
-            LSB_output_valid <= `True;
+            LSB_output_valid <= `False;
             // RF
             RF_rd_valid <= `True;
-            RF_rd <= IC_inst[11 : 7];
+            RF_rd <= IQ_inst[11 : 7];
             RF_rs1_valid <= `True;
-            RF_rs1 <= IC_inst[19 : 15];
+            RF_rs1 <= IQ_inst[19 : 15];
             RF_rs2_valid <= `False;
             // RS
             RS_output_valid <= `True;
-            RS_inst_pc <= IC_inst_pc;
-            RS_rd <= IC_inst[11 : 7];
-            if(funct3 == `FUNCT3_SLLI || funct3 == `FUNCT3_SRLI) RS_imm <= {{26{1'b0}}, IC_inst[25 : 20]};
-            else RS_imm <= {{20{IC_inst[31]}}, IC_inst[31 : 20]};
+            RS_inst_pc <= IQ_inst_pc;
+            RS_rd <= IQ_inst[11 : 7];
+            if(funct3 == `FUNCT3_SLLI || funct3 == `FUNCT3_SRLI) RS_imm <= {{26{1'b0}}, IQ_inst[25 : 20]};
+            else RS_imm <= {{20{IQ_inst[31]}}, IQ_inst[31 : 20]};
             // ROB
-            ROB_ouptut_valid <= `True;
-            ROB_inst_pc <= IC_inst_pc;
-            ROB_rd <= IC_inst[11 : 7];
+            ROB_output_valid <= `True;
+            ROB_inst_pc <= IQ_inst_pc;
+            ROB_rd <= IQ_inst[11 : 7];
             ROB_predicted_to_jump <= `False;
-            ROB_predicted_pc <= IC_inst_pc + 32'h4;
+            ROB_predicted_pc <= IQ_inst_pc + 32'h4;
             if(funct3 == `FUNCT3_ADDI) begin
                 RS_OP_ID <= `ADDI;
                 ROB_OP_ID <= `ADDI;
@@ -430,7 +430,7 @@ always @(posedge clk) begin
         // RS
         RS_output_valid <= `False;
         // ROB
-        ROB_ouptut_valid <= `False;
+        ROB_output_valid <= `False;
     end
 end
 

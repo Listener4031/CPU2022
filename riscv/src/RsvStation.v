@@ -6,7 +6,7 @@ module RsvStation(
     input wire rdy,
 
     // InstCache
-    output reg IC_RS_is_full,
+    output reg IQ_RS_is_full,
     
     // Decoder
     input wire ID_input_valid,
@@ -130,7 +130,7 @@ assign RS_ind_valid_pos = (occupied_judger[0] == `False || ready_judger[0] == `T
                           (occupied_judger[15] == `False || ready_judger[15] == `True) ? 5'b01111 : 5'b10000;
 
 always @(*) begin
-    IC_RS_is_full = RS_is_full;
+    IQ_RS_is_full = RS_is_full;
 end
 
 integer i;
@@ -203,44 +203,44 @@ always @(posedge clk) begin
         end
         else begin
             // reg
-            occupied_judger[RS_ind_to_ALU] <= `False;
-            rs1_valid_judger[RS_ind_to_ALU] <= `False;
-            rs2_valid_judger[RS_ind_to_ALU] <= `False;
+            occupied_judger[RS_ind_to_ALU[3 : 0]] <= `False;
+            rs1_valid_judger[RS_ind_to_ALU[3 : 0]] <= `False;
+            rs2_valid_judger[RS_ind_to_ALU[3 : 0]] <= `False;
             // output
             ALU_output_valid <= `True;
-            ALU_OP_ID <= OP_IDs[RS_ind_to_ALU];
-            ALU_inst_pc <= inst_pcs[RS_ind_to_ALU];
-            ALU_reg_rs1 <= reg_rs1s[RS_ind_to_ALU];
-            ALU_reg_rs2 <= reg_rs2s[RS_ind_to_ALU];
-            ALU_imm <= imms[RS_ind_to_ALU];
-            ALU_ROB_id <= ROB_ids[RS_ind_to_ALU];
+            ALU_OP_ID <= OP_IDs[RS_ind_to_ALU[3 : 0]];
+            ALU_inst_pc <= inst_pcs[RS_ind_to_ALU[3 : 0]];
+            ALU_reg_rs1 <= reg_rs1s[RS_ind_to_ALU[3 : 0]];
+            ALU_reg_rs2 <= reg_rs2s[RS_ind_to_ALU[3 : 0]];
+            ALU_imm <= imms[RS_ind_to_ALU[3 : 0]];
+            ALU_ROB_id <= ROB_ids[RS_ind_to_ALU[3 : 0]];
         end
         if(RS_ind_valid_pos == 5'b10000) begin // 其实就是 full 
         end
         else if(ID_input_valid == `True) begin
             // reg 
-            occupied_judger[RS_ind_valid_pos] <= `True;
-            ROB_ids[RS_ind_valid_pos] <= ROB_new_ID;
-            inst_pcs[RS_ind_valid_pos] <= ID_inst_pc;
-            OP_IDs[RS_ind_valid_pos] <= ID_OP_ID;
-            rds[RS_ind_valid_pos] <= ID_rd;
+            occupied_judger[RS_ind_valid_pos[3 : 0]] <= `True;
+            ROB_ids[RS_ind_valid_pos[3 : 0]] <= ROB_new_ID;
+            inst_pcs[RS_ind_valid_pos[3 : 0]] <= ID_inst_pc;
+            OP_IDs[RS_ind_valid_pos[3 : 0]] <= ID_OP_ID;
+            rds[RS_ind_valid_pos[3 : 0]] <= ID_rd;
             if(RF_rs1_valid == `True || RF_need_rs1_flag == `False) begin
-                reg_rs1s[RS_ind_valid_pos] <= RF_reg_rs1;
-                rs1_valid_judger[RS_ind_valid_pos] <= `True;
+                reg_rs1s[RS_ind_valid_pos[3 : 0]] <= RF_reg_rs1;
+                rs1_valid_judger[RS_ind_valid_pos[3 : 0]] <= `True;
             end
             else begin
-                rs1_valid_judger[RS_ind_valid_pos] <= `False;
-                id1s[RS_ind_valid_pos] <= RF_rs1_ROB_id;
+                rs1_valid_judger[RS_ind_valid_pos[3 : 0]] <= `False;
+                id1s[RS_ind_valid_pos[3 : 0]] <= RF_rs1_ROB_id;
             end
             if(RF_rs2_valid == `True || RF_need_rs2_flag == `False) begin
-                reg_rs2s[RS_ind_valid_pos] <= RF_reg_rs2;
-                rs2_valid_judger[RS_ind_valid_pos] <= `True;
+                reg_rs2s[RS_ind_valid_pos[3 : 0]] <= RF_reg_rs2;
+                rs2_valid_judger[RS_ind_valid_pos[3 : 0]] <= `True;
             end
             else begin
-                rs2_valid_judger[RS_ind_valid_pos] <= `False;
-                id2s[RS_ind_valid_pos] <= RF_rs2_ROB_id;
+                rs2_valid_judger[RS_ind_valid_pos[3 : 0]] <= `False;
+                id2s[RS_ind_valid_pos[3 : 0]] <= RF_rs2_ROB_id;
             end
-            imms[RS_ind_valid_pos] <= ID_imm;
+            imms[RS_ind_valid_pos[3 : 0]] <= ID_imm;
         end
     end
 end

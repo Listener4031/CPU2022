@@ -26,6 +26,16 @@
 `define LSBSize 16
 `define LSBIndexBus 3 : 0
 
+`define IQSize 16
+`define IQIndexBus 3 : 0
+
+`define MSBSize 8
+`define MSBIndexBus 2 : 0
+
+`define ICacheSize 256
+`define TagWidth 22
+`define ICacheIndex 9 : 2
+
 //instruction set
 `define NOP     6'd0
 
