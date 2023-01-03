@@ -27,7 +27,10 @@ module ALU_LS(
     input wire [`DataWidth - 1 : 0] MC_value,
     output reg MC_need_load,
     output reg [`OpIdBus] MC_OP_ID,
-    output reg [`AddrWidth - 1 : 0] MC_load_addr
+    output reg [`AddrWidth - 1 : 0] MC_load_addr,
+
+    // roll back
+    input wire ROB_roll_back_flag
 
 );
 
@@ -50,7 +53,7 @@ always @(posedge clk) begin
     end
     else if(rdy == `False) begin
     end
-    else begin
+    else if(ROB_roll_back_flag == `False) begin
         LSB_enable <= (status == 2'b00 || status == 2'b11) ? `True : `False;
         if(LSB_input_valid == `True) begin         // status
             if(is_store == `True) begin // store
@@ -125,6 +128,13 @@ always @(posedge clk) begin
                 MC_need_load <= `False;
             end
         end
+    end
+    else begin
+        status <= 2'b00;
+        addr <= {32{1'b0}};
+        value <= {32{1'b0}};
+        OP_ID <= {6{1'b0}};
+        ROB_id <= {4{1'b0}};
     end
 end
 

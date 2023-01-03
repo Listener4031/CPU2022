@@ -5,7 +5,7 @@ module ReorderBuffer(
     input wire rst,
     input wire rdy,
 
-    // InstCache
+    // InstQueue
     output reg IQ_ROB_is_full,
 
     // Decoder
@@ -51,7 +51,30 @@ module ReorderBuffer(
     output reg MC_output_valid,
     output reg [`OpIdBus] MC_OP_ID,
     output reg [`DataWidth - 1 : 0] MC_value,
-    output reg [`AddrWidth - 1 : 0] MC_addr
+    output reg [`AddrWidth - 1 : 0] MC_addr,
+
+    // Predictor
+    output reg PDC_output_valid,
+    output reg [`AddrWidth - 1 : 0] PDC_inst_pc,
+    output reg PDC_hit,
+
+    // roll back
+    // MC
+    output reg MC_roll_back_flag,
+    // IF
+    output reg IF_roll_back_flag,
+    output reg IF_roll_back_pc,
+    // IQ
+    output reg IQ_roll_back_flag,
+    // LSB
+    output reg LSB_roll_back_flag,
+    // RS
+    output reg RS_roll_back_flag,
+    // RF
+    output reg RF_roll_back_flag,
+    // ALU_LS
+    output reg ALU_LS_roll_back_flag
+
 );
 
 reg [4 : 0] siz; 
@@ -65,6 +88,10 @@ reg [`RegIndexBus] rds[`ROBSize - 1 : 0];
 reg [`DataWidth - 1 : 0] values[`ROBSize - 1 : 0];
 reg [`AddrWidth - 1 : 0] addrs[`ROBSize - 1 : 0]; // ls
 reg [`AddrWidth - 1 : 0] predicted_pcs[`ROBSize - 1 : 0]; // jal, jalr, br
+reg [`AddrWidth - 1 : 0] targeted_pcs[`ROBSize -1 : 0];
+
+reg [1 : 0] roll_back_flag;
+reg [`AddrWidth - 1 : 0] roll_back_pc;
 
 wire ROB_is_full;
 assign ROB_is_full = ((siz == 5'b10000) && (ready_judger[head] == `False)) ? `True : `False;
@@ -72,13 +99,13 @@ assign ROB_is_full = ((siz == 5'b10000) && (ready_judger[head] == `False)) ? `Tr
 wire [`ROBIndexBus] in_queue_pos;
 assign in_queue_pos = (tail == 4'b1111) ? 4'b0000 : (tail + 4'b0001);
 
-wire roll_back_flag;
-assign roll_back_flag = (siz == 5'b00000) ? `False : 
-                        (ready_judger[head] == `False) ? `False : 
-                        (OP_IDs[head] == `JALR) ? `True : 
-                        (OP_IDs[head] == `JAL) ? `False : 
-                        (OP_IDs[head] != `BEQ && OP_IDs[head] != `BNE && OP_IDs[head] != `BLT && OP_IDs[head] != `BGE && OP_IDs[head] != `BLTU && OP_IDs[head] != `BGEU) ? `False : 
-                        (ALU_RS_targeted_pc == predicted_pcs[head]) ? `False : `True; // 预测是否错误，预测正确啥事不干，预测错误需要回滚
+// wire roll_back_flag;
+// assign roll_back_flag = (siz == 5'b00000) ? `False : 
+//                        (ready_judger[head] == `False) ? `False : 
+//                        (OP_IDs[head] == `JALR) ? `True : 
+//                        (OP_IDs[head] == `JAL) ? `False : 
+//                        (OP_IDs[head] != `BEQ && OP_IDs[head] != `BNE && OP_IDs[head] != `BLT && OP_IDs[head] != `BGE && OP_IDs[head] != `BLTU && OP_IDs[head] != `BGEU) ? `False : 
+//                         (targeted_pcs[head] == predicted_pcs[head]) ? `False : `True; // 预测是否错误，预测正确啥事不干，预测错误需要回滚
 
 wire will_launch_to_RF;
 assign will_launch_to_RF = (OP_IDs[head] == `LUI || OP_IDs[head] == `AUIPC || OP_IDs[head] == `JAL || OP_IDs[head] == `JALR
@@ -88,6 +115,10 @@ assign will_launch_to_RF = (OP_IDs[head] == `LUI || OP_IDs[head] == `AUIPC || OP
                              || OP_IDs[head] == `OR || OP_IDs[head] == `AND || OP_IDs[head] == `ADDI || OP_IDs[head] == `SLTI
                               || OP_IDs[head] == `SLTIU || OP_IDs[head] == `XORI || OP_IDs[head] == `ORI || OP_IDs[head] == `ANDI
                                || OP_IDs[head] == `SLLI || OP_IDs[head] == `SRLI || OP_IDs[head] == `SRAI) ? `True : `False;
+
+wire is_branch;
+assign is_branch = (OP_IDs[head] == `JAL || OP_IDs[head] == `JALR || OP_IDs[head] == `BEQ || OP_IDs[head] == `BNE
+                  || OP_IDs[head] == `BLT || OP_IDs[head] == `BGE || OP_IDs[head] == `BLTU || OP_IDs[head] == `BGEU) ? `True : `False;
 
 always @(*) begin
     IQ_ROB_is_full = ROB_is_full;
@@ -115,10 +146,33 @@ always @(posedge clk) begin
         for(i = 0; i < `ROBSize; i = i + 1) begin
             ready_judger[i] <= `False;
         end
+        roll_back_flag <= 2'b00;
     end
     else if(rdy == `False) begin
     end
-    else if(roll_back_flag == `False) begin
+    else if(roll_back_flag == 2'b00) begin
+        roll_back_flag <= (siz == 5'b00000) ? `False : 
+                          (ready_judger[head] == `False) ? `False : 
+                          (OP_IDs[head] == `JALR) ? `True : 
+                          (OP_IDs[head] == `JAL) ? `False : 
+                          (OP_IDs[head] != `BEQ && OP_IDs[head] != `BNE && OP_IDs[head] != `BLT && OP_IDs[head] != `BGE && OP_IDs[head] != `BLTU && OP_IDs[head] != `BGEU) ? `False : 
+                          (targeted_pcs[head] == predicted_pcs[head]) ? 2'b00 : 2'b01; // 预测是否错误，预测正确啥事不干，预测错误需要回滚
+        roll_back_pc <= targeted_pcs[head];
+        // MC
+        MC_roll_back_flag <= `False;
+        // IF
+        IF_roll_back_flag <= `False;
+        // IQ
+        IQ_roll_back_flag <= `False;
+        // LSB
+        LSB_roll_back_flag <= `False;
+        // RS
+        RS_roll_back_flag <= `False;
+        // RF
+        RF_roll_back_flag <= `False;
+        // ALU_LS
+        ALU_LS_roll_back_flag <= `False;
+        // update siz
         if(ID_input_valid <= `True) begin
             if(siz != 5'b00000 && ready_judger[head] == `True) siz <= siz;
             else siz <= siz + 5'b00001;
@@ -127,9 +181,6 @@ always @(posedge clk) begin
             if(siz != 5'b00000 && ready_judger[head] == `True) siz <= siz - 5'b00001;
             else siz <= siz;
         end
-        // RS_ROB_id <= in_queue_pos;
-        // LSB_ROB_id <= in_queue_pos;
-        // RF_ROB_id <= in_queue_pos;
         if(ID_input_valid <= `True) begin
             ready_judger[in_queue_pos] <= `False;
             OP_IDs[in_queue_pos] <= ID_OP_ID;
@@ -170,16 +221,26 @@ always @(posedge clk) begin
                 MC_value <= values[head];
                 MC_addr <= addrs[head];
             end
+            if(is_branch == `True) begin
+                PDC_output_valid <= `True;
+                PDC_inst_pc <= inst_pcs[head];
+                PDC_hit <= (inst_pcs[head] + 32'h4 == targeted_pcs[head]) ? `False : `True;
+            end
+            else begin
+                PDC_output_valid <= `False;
+            end
         end
         else begin
             RS_output_valid <= `False;
             LSB_output_valid <= `False;
             RF_output_valid <= `False;
             MC_output_valid <= `False;
+            PDC_output_valid <= `False;
         end
         if(ALU_RS_input_valid == `True) begin
             ready_judger[ALU_RS_ROB_id] <= `True;
             values[ALU_RS_ROB_id] <= ALU_RS_value;
+            targeted_pcs[ALU_RS_ROB_id] <= (ALU_RS_jump_flag == `True) ? ALU_RS_targeted_pc : (inst_pcs[ALU_RS_ROB_id] + 32'h4);
         end
         if(ALU_LS_input_valid == `True) begin
             ready_judger[ALU_LS_ROB_id] <= `True;
@@ -187,7 +248,32 @@ always @(posedge clk) begin
             addrs[ALU_LS_ROB_id] <= ALU_LS_addr;
         end
     end
-    else begin // roll back, modify pc
+    else if(roll_back_flag == 2'b01) begin // roll back, modify pc
+        roll_back_flag <= 2'b10;
+        // MC
+        MC_roll_back_flag <= `True;
+        // IF
+        IF_roll_back_flag <= `True;
+        IF_roll_back_pc <= roll_back_pc;
+        // IQ
+        IQ_roll_back_flag <= `True;
+        // LSB
+        LSB_roll_back_flag <= `True;
+        // RS
+        RS_roll_back_flag <= `True;
+        // RF
+        RF_roll_back_flag <= `True;
+        // ALU_LS
+        ALU_LS_roll_back_flag <= `True;
+    end
+    else begin
+        roll_back_flag <= 2'b00;
+        siz <= 5'b00000;
+        head <= 4'b0000;
+        tail <= 4'b1111;
+        for(i = 0; i < `ROBSize; i = i + 1) begin
+            ready_judger[i] <= `False;
+        end
     end
 end
 

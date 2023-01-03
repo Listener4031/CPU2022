@@ -5,7 +5,7 @@ module LSBuffer(
     input wire rst,
     input wire rdy,
 
-    // InstCache
+    // InstQueue
     output reg IQ_LSB_is_full,
 
     // Decoder
@@ -42,7 +42,10 @@ module LSBuffer(
     output reg [`DataWidth - 1 : 0] ALU_reg_rs1,
     output reg [`DataWidth - 1 : 0] ALU_reg_rs2,
     output reg [`ImmWidth - 1 : 0] ALU_imm,
-    output reg [`ROBIDBus] ALU_ROB_id
+    output reg [`ROBIDBus] ALU_ROB_id,
+
+    // roll back
+    input wire ROB_roll_back_flag
 );
 
 reg [4 : 0] siz;
@@ -112,7 +115,7 @@ always @(posedge clk) begin
     end
     else if(rdy == `False) begin
     end
-    else begin
+    else if(ROB_roll_back_flag == `False) begin
         if(ROB_input_valid == `True) begin
             if(siz != 5'b00000) begin
                 for(i = head; i != in_queue_pos; i = ((i == 4'b1111) ? 4'b0000 : (i + 4'b0001))) begin
@@ -169,6 +172,11 @@ always @(posedge clk) begin
             ALU_imm <= imms[head];
             ALU_ROB_id <= ROB_ids[head];
         end
+    end
+    else begin
+        siz <= 5'b00000;
+        head <= 4'b0000;
+        tail <= 4'b1111;
     end
 end
 

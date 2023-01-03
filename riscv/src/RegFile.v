@@ -43,7 +43,10 @@ module RegFile(
     input wire [`ROBIDBus] ROB_rd_ROB_id,
     input wire ROB_input_valid,
     input wire [`RegIndexBus] ROB_rd,
-    input wire [`RegIndexBus] ROB_value
+    input wire [`RegIndexBus] ROB_value,
+
+    // roll back
+    input wire ROB_roll_back_flag
 );
 
 reg [`DataWidth - 1 : 0] register[`RegSize - 1 : 0];
@@ -120,10 +123,23 @@ always @(*) begin                              // LSB from RF get ROB_id
     end
 end
 
+integer i;
+
 always @(posedge clk) begin
-    if(ID_rd_valid == `True) begin
-        invalid_judger[ID_rd] <= `True;
-        ROB_ids[ID_rd] <= ROB_rd_ROB_id;
+    if(ROB_roll_back_flag == `True) begin
+        for(i = 0; i < `RegSize; i = i + 1) begin
+            invalid_judger[i] <= `False;
+        end
+    end
+    else begin
+        if(ID_rd_valid == `True) begin
+            invalid_judger[ID_rd] <= `True;
+            ROB_ids[ID_rd] <= ROB_rd_ROB_id;
+        end
+        if(ROB_input_valid == `True) begin
+            register[ROB_rd] <= ROB_value;
+            invalid_judger[ROB_rd] <= `False;
+        end
     end
 end
 

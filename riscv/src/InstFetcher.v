@@ -23,7 +23,11 @@ module InstFetcher(
     output reg [`InstWidth - 1 : 0] IQ_inst,
     output reg [`AddrWidth - 1 : 0] IQ_inst_pc,
     output reg IQ_predicted_to_jump,
-    output reg [`AddrWidth - 1 : 0] IQ_predicted_pc
+    output reg [`AddrWidth - 1 : 0] IQ_predicted_pc,
+
+    // roll back
+    input wire ROB_roll_back_flag,
+    input wire ROB_roll_back_pc
     
 );
 
@@ -57,7 +61,7 @@ always @(posedge clk) begin
     end
     else if(rdy == `False) begin
     end
-    else begin
+    else if(ROB_roll_back_flag == `False) begin
         if(IQ_is_full == `True) begin // not fetch
             // MC
             MC_need_fetch <= `False;
@@ -110,6 +114,10 @@ always @(posedge clk) begin
                 end 
             end
         end
+    end
+    else begin // roll back
+        fetch_pc <= ROB_roll_back_pc;
+        status <= 1'b0;
     end
 end
 

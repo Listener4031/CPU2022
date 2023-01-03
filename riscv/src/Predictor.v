@@ -58,6 +58,8 @@ always @(posedge clk) begin
             pdc[ROB_pc[9 : 2]] <= (ROB_hit == `True) ? 2'b11 : 2'b10;
         end
     end
+    else begin
+    end
 end
 
 endmodule

@@ -29,7 +29,10 @@ module InstQueue(
     output reg [`InstWidth - 1 : 0] ID_inst,
     output reg [`AddrWidth - 1 : 0] ID_inst_pc,
     output reg ID_predicted_to_jump,
-    output reg [`AddrWidth - 1 : 0] ID_predicted_pc
+    output reg [`AddrWidth - 1 : 0] ID_predicted_pc,
+
+    // roll back
+    input wire ROB_roll_back_flag
 
 );
 
@@ -68,7 +71,7 @@ always @(posedge clk) begin
     end
     else if(rdy == `False) begin
     end
-    else begin
+    else if(ROB_roll_back_flag == `True) begin
         if(not_launch_inst == `True) begin
             if(IF_input_valid == `True) siz <= siz + 5'b00001;
             else siz <= siz;
@@ -95,6 +98,11 @@ always @(posedge clk) begin
             predicted_pcs[in_queue_pos] <= IF_predicted_pc;
             tail <= in_queue_pos;
         end
+    end
+    else begin
+        siz <= 5'b00000;
+        head <= 4'b0000;
+        tail <= 4'b1111;
     end
 end
 

@@ -5,7 +5,7 @@ module Decoder(
     input wire rst,
     input wire rdy,
 
-    // InstCache
+    // InstQueue
     input wire IQ_input_valid,                    // `True -> IQ_inst could be used
     input wire [`InstWidth - 1 : 0] IQ_inst,
     input wire [`AddrWidth - 1 : 0] IQ_inst_pc,

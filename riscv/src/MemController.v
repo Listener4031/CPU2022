@@ -30,7 +30,10 @@ module MemController(
     input wire ROB_input_valid,
     input wire [`OpIdBus] ROB_OP_ID,
     input wire [`DataWidth - 1 : 0] ROB_value,
-    input wire [`AddrWidth - 1 : 0] ROB_addr
+    input wire [`AddrWidth - 1 : 0] ROB_addr,
+
+    // roll back
+    input wire ROB_roll_back_flag
 );
 
 reg [1 : 0] status; // 2'b00 -> IDLE, 2'b01 -> fetch, 2'b10 -> read, 2'b11 -> write
@@ -74,15 +77,15 @@ always @(posedge clk) begin
     head_of_MSB <= 3'b000;
     tail_of_MSB <= 3'b111;
     // fetch
-    fetch_stage <= 3'b000;
+    fetch_stage <= 4'b000;
     // load
-    load_stage <= 3'b000;
+    load_stage <= 4'b000;
     // store 
-    store_stage <= 3'b000;
+    store_stage <= 4'b000;
   end
   else if(rdy == `False) begin
   end
-  else begin
+  else if(ROB_roll_back_flag == `False) begin
     // store buffer
     if(ROB_input_valid == `True) begin // 直接进队
       addrs[in_queue_pos] <= ROB_addr;
@@ -508,6 +511,107 @@ always @(posedge clk) begin
           addr_to_ram <= {32{1'b0}};
         end
       end
+    end
+  end
+  else begin // roll back
+    // fetch
+    fetch_stage <= 4'b000;
+    // load
+    load_stage <= 4'b000;
+    // store 
+    if(status == 2'b11) begin
+      IF_output_valid <= `False;
+      ALU_LS_output_valid <= `False;
+      if(store_OP_ID == `SB) begin
+        if(store_stage == 4'b0000) begin
+          is_write <= `False;
+          addr_to_ram <= {32{1'b0}};
+        end
+        else if(store_stage == 4'b0001) begin
+          is_write <= `True;
+          addr_to_ram <= store_addr;
+          data_out <= store_value[7 : 0];
+          // store area
+          store_stage <= 4'b0000;
+          // update status
+          status <= 2'b00;
+        end
+        else begin
+          is_write <= `False;
+          addr_to_ram <= {32{1'b0}};
+        end
+      end
+      else if(store_OP_ID == `SH) begin
+        if(store_stage == 4'b0000) begin
+          is_write <= `False;
+          addr_to_ram <= {32{1'b0}};
+        end
+        else if(store_stage == 4'b0001) begin
+          is_write <= `True;
+          addr_to_ram <= store_addr;
+          data_out <= store_value[7 : 0];
+          // store area
+          store_stage <= 4'b0010;
+        end
+        else if(store_stage == 4'b0010) begin
+          is_write <= `True;
+          addr_to_ram <= store_addr + 32'h1;
+          data_out <= store_value[15 : 8];
+          // store area
+          store_stage <= 4'b0000;
+          // update status
+          status <= 2'b00;
+        end
+        else begin
+          is_write <= `False;
+          addr_to_ram <= {32{1'b0}};
+        end
+      end
+      else begin
+        if(store_stage == 4'b0000) begin
+          is_write <= `False;
+          addr_to_ram <= {32{1'b0}};
+        end
+        else if(store_stage == 4'b0001) begin
+          is_write <= `True;
+          addr_to_ram <= store_addr;
+          data_out <= store_value[7 : 0];
+          // store area
+          store_stage <= 4'b0010;
+        end
+        else if(store_stage == 4'b0010) begin
+          is_write <= `True;
+          addr_to_ram <= store_addr + 32'h1;
+          data_out <= store_value[15 : 8];
+          // store area
+          store_stage <= 4'b0011;
+        end
+        else if(store_stage == 4'b0011) begin
+          is_write <= `True;
+          addr_to_ram <= store_addr + 32'h2;
+          data_out <= store_value[23 : 16];
+          // store area
+          store_stage <= 4'b0100;
+        end
+        else if(store_stage == 4'b0100) begin
+          is_write <= `True;
+          addr_to_ram <= store_addr + 32'h3;
+          data_out <= store_value[31 : 24];
+          // store area
+          store_stage <= 4'b0000;
+          // update status
+          status <= 2'b00;
+        end
+        else begin
+          is_write <= `False;
+          addr_to_ram <= {32{1'b0}};
+        end
+      end
+    end
+    else begin
+      status <= 2'b00;
+      is_write <= `False;
+      addr_to_ram <= {32{1'b0}};
     end
   end
 end

@@ -5,7 +5,7 @@ module RsvStation(
     input wire rst,
     input wire rdy,
 
-    // InstCache
+    // InstQueue
     output reg IQ_RS_is_full,
     
     // Decoder
@@ -41,7 +41,10 @@ module RsvStation(
     output reg [`DataWidth - 1 : 0] ALU_reg_rs1,
     output reg [`DataWidth - 1 : 0] ALU_reg_rs2,
     output reg [`ImmWidth - 1 : 0] ALU_imm,
-    output reg [`ROBIDBus] ALU_ROB_id
+    output reg [`ROBIDBus] ALU_ROB_id,
+
+    // roll back
+    input wire ROB_roll_back_flag
 );
 
 reg [`RSSize - 1 : 0] occupied_judger;              // is this position valid ?
@@ -149,7 +152,7 @@ reg [`ROBIDBus] id2s[`RSSize - 1 : 0];
 reg [`ImmWidth - 1 : 0] imms[`RSSize - 1 : 0];
 */
 always @(posedge clk) begin
-    if(rst == `True) begin
+    if(rst == `True || ROB_roll_back_flag == `True) begin
         for(i = 0; i < `RSSize; i = i + 1) begin
             occupied_judger[i] <= `False;
             ROB_ids[i] <= {4{1'b0}};
