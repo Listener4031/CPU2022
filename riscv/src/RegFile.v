@@ -43,10 +43,11 @@ module RegFile(
     input wire [`ROBIDBus] ROB_rd_ROB_id,
     input wire ROB_input_valid,
     input wire [`RegIndexBus] ROB_rd,
-    input wire [`RegIndexBus] ROB_value,
+    input wire [`DataWidth - 1 : 0] ROB_value,
 
     // roll back
     input wire ROB_roll_back_flag
+
 );
 
 reg [`DataWidth - 1 : 0] register[`RegSize - 1 : 0];

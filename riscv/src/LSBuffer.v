@@ -32,7 +32,7 @@ module LSBuffer(
     input wire [`ROBIDBus] ROB_new_ID,
     input wire ROB_input_valid,
     input wire [`RegIndexBus] ROB_update_ROB_id,
-    input wire [`RegIndexBus] ROB_value,
+    input wire [`DataWidth - 1 : 0] ROB_value,
 
     // ALU_LS
     input wire ALU_ready,
@@ -46,6 +46,7 @@ module LSBuffer(
 
     // roll back
     input wire ROB_roll_back_flag
+    
 );
 
 reg [4 : 0] siz;

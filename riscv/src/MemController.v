@@ -34,6 +34,7 @@ module MemController(
 
     // roll back
     input wire ROB_roll_back_flag
+    
 );
 
 reg [1 : 0] status; // 2'b00 -> IDLE, 2'b01 -> fetch, 2'b10 -> read, 2'b11 -> write

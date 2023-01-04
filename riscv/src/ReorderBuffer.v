@@ -55,8 +55,8 @@ module ReorderBuffer(
 
     // Predictor
     output reg PDC_output_valid,
-    output reg [`AddrWidth - 1 : 0] PDC_inst_pc,
     output reg PDC_hit,
+    output reg [`AddrWidth - 1 : 0] PDC_inst_pc,
 
     // roll back
     // MC

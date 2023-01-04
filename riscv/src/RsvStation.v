@@ -19,7 +19,7 @@ module RsvStation(
     input wire [`ROBIDBus] ROB_new_ID,
     input wire ROB_input_valid,
     input wire [`RegIndexBus] ROB_update_ROB_id,
-    input wire [`RegIndexBus] ROB_value,
+    input wire [`DataWidth - 1 : 0] ROB_value,
 
     // RegFile
     input wire RF_need_rd_flag,
@@ -45,6 +45,7 @@ module RsvStation(
 
     // roll back
     input wire ROB_roll_back_flag
+
 );
 
 reg [`RSSize - 1 : 0] occupied_judger;              // is this position valid ?
