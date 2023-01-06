@@ -1,18 +1,18 @@
 // RISCV32I CPU top module
 // port modification allowed for debugging purposes
 
-`include "riscv/src/ALU_LS.v"
-`include "riscv/src/ALU_RS.v"
-`include "riscv/src/Decoder.v"
-`include "riscv/src/defines.v"
-`include "riscv/src/InstFetcher.v"
-`include "riscv/src/InstQueue.v"
-`include "riscv/src/LSBuffer.v"
-`include "riscv/src/MemController.v"
-`include "riscv/src/Predictor.v"
-`include "riscv/src/RegFile.v"
-`include "riscv/src/ReorderBuffer.v"
-`include "riscv/src/RsvStation.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/ALU_LS.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/ALU_RS.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/Decoder.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/defines.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/InstFetcher.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/InstQueue.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/LSBuffer.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/MemController.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/Predictor.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/RegFile.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/ReorderBuffer.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/RsvStation.v"
 
 module cpu(
   input  wire                 clk_in,			// system clock signal

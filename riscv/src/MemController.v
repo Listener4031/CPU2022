@@ -1,4 +1,4 @@
-`include "riscv/src/defines.v"
+`include "/Users/weijie/Desktop/CPU2022/riscv/src/defines.v"
 
 module MemController(
     input wire clk,
@@ -34,7 +34,7 @@ module MemController(
 
     // roll back
     input wire ROB_roll_back_flag
-    
+
 );
 
 reg [1 : 0] status; // 2'b00 -> IDLE, 2'b01 -> fetch, 2'b10 -> read, 2'b11 -> write
@@ -73,6 +73,8 @@ end
 
 always @(posedge clk) begin
   if(rst == `True) begin
+    // status
+    status <= 2'b00;
     // store_buffer
     size_of_MSB <= 4'b0000;
     head_of_MSB <= 3'b000;
@@ -124,11 +126,12 @@ always @(posedge clk) begin
       if(size_of_MSB != 4'b0000 && store_stage == 4'b0000) size_of_MSB <= size_of_MSB - 4'b0001;
       else size_of_MSB <= size_of_MSB;
     end
+    // status
     if(status == 2'b00) begin      // IDLE
       is_write <= `False;
       addr_to_ram <= {32{1'b0}};
       // IF
-      IF_output_valid <= `True;
+      IF_output_valid <= `False;
       // ALU_LS
       ALU_LS_output_valid <= `False;
       // update 
@@ -156,7 +159,7 @@ always @(posedge clk) begin
       end
       else if(fetch_stage == 4'b0010) begin // StageOne -> second_launch -> StageTwo
         is_write <= `False;
-        addr_to_ram <= fetch_addr + 32'h1;
+        addr_to_ram <= fetch_addr + {{31{1'b0}}, 1'b1};
         // fetch area
         fetch_stage <= 4'b0011;
         // IF
@@ -164,7 +167,7 @@ always @(posedge clk) begin
       end
       else if(fetch_stage == 4'b0011) begin // StageTwo -> third_launch && get_first -> StageThree
         is_write <= `False;
-        addr_to_ram <= fetch_addr + 32'h2;
+        addr_to_ram <= fetch_addr + {{32{1'b0}}, 2'b10};
         // fetch area
         fetch_inst[7 : 0] <= data_in;
         fetch_stage <= 4'b0100;
@@ -173,7 +176,7 @@ always @(posedge clk) begin
       end
       else if(fetch_stage == 4'b0100) begin // StageThree -> fourth_launch && get_second -> StageFour
         is_write <= `False;
-        addr_to_ram <= fetch_addr + 32'h3;
+        addr_to_ram <= fetch_addr + {{31{1'b0}}, 2'b11};
         // fetch area
         fetch_inst[15 : 8] <= data_in;
         fetch_stage <= 4'b0101;

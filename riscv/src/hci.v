@@ -27,6 +27,9 @@
 
 // modification allowed for debugging purposes
 
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/common/fifo/fifo.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/common/uart/uart.v"
+
 module hci
 #(
   parameter SYS_CLK_FREQ = 100000000,

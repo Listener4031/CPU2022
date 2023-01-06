@@ -1,6 +1,6 @@
 // testbench top module file
 // for simulation only
-`include "riscv/src/test001.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/riscv_top.v"
 
 `timescale 1ns/1ps
 module testbench;
@@ -8,12 +8,6 @@ module testbench;
 reg clk;
 reg rst;
 
-Test test_module(
-  .clk(clk),
-  .rst(rst)
-);
-
-/*
 riscv_top #(.SIM(1)) top(
     .EXCLK(clk),
     .btnC(rst),
@@ -21,7 +15,6 @@ riscv_top #(.SIM(1)) top(
     .Rx(),
     .led()
 );
-*/
 
 initial begin
   clk=0;

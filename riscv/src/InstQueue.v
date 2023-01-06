@@ -1,4 +1,4 @@
-`include "riscv/src/defines.v"
+`include "/Users/weijie/Desktop/CPU2022/riscv/src/defines.v"
 
 module InstQueue(
     input wire clk,
@@ -71,7 +71,7 @@ always @(posedge clk) begin
     end
     else if(rdy == `False) begin
     end
-    else if(ROB_roll_back_flag == `True) begin
+    else if(ROB_roll_back_flag == `False) begin
         if(not_launch_inst == `True) begin
             if(IF_input_valid == `True) siz <= siz + 5'b00001;
             else siz <= siz;

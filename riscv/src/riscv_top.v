@@ -1,6 +1,10 @@
 // riscv top module file
 // modification allowed for debugging purposes
 
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/ram.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/cpu.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/hci.v"
+
 module riscv_top
 #(
 	parameter SIM = 0						// whether in simulation

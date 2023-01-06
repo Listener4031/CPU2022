@@ -1,4 +1,4 @@
-`include "riscv/src/defines.v"
+`include "/Users/weijie/Desktop/CPU2022/riscv/src/defines.v"
 
 module Predictor(
     input wire clk,
@@ -15,7 +15,7 @@ module Predictor(
     input wire ROB_input_valid,
     input wire ROB_hit,
     input wire [`AddrWidth - 1 : 0] ROB_pc
-    
+
 );
 
 reg [1 : 0] pdc[`PDCSize - 1 : 0];

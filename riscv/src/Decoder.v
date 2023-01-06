@@ -1,4 +1,4 @@
-`include "riscv/src/defines.v"
+`include "/Users/weijie/Desktop/CPU2022/riscv/src/defines.v"
 // 周期任务：分解从IC进来（如果有）的指令
 module Decoder(
     input wire clk,
@@ -41,6 +41,7 @@ module Decoder(
     output reg [`RegIndexBus] ROB_rd,
     output reg ROB_predicted_to_jump,
     output reg [`AddrWidth - 1 : 0] ROB_predicted_pc
+
 );
 
 wire [`OpcodeBus] opcode;

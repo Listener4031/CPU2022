@@ -25,6 +25,11 @@
 *  (serial) port.
 ***************************************************************************************************/
 
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/common/uart/uart_baud_clk.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/common/uart/uart_rx.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/common/uart/uart_tx.v"
+// `include "/Users/weijie/Desktop/CPU2022/riscv/src/common/fifo/fifo.v"
+
 module uart
 #(
   parameter SYS_CLK_FREQ = 50000000,
