@@ -14,6 +14,7 @@ module RsvStation(
     input wire [`OpIdBus] ID_OP_ID,
     input wire [`RegIndexBus] ID_rd,
     input wire [`ImmWidth - 1 : 0] ID_imm,
+    output reg ID_RS_is_full,
     
     // ReorderBuffer
     input wire [`ROBIDBus] ROB_new_ID,
@@ -48,9 +49,10 @@ module RsvStation(
 
 );
 
+reg [4 : 0] siz;
 reg [`RSSize - 1 : 0] occupied_judger;              // is this position valid ?
 reg [`ROBIDBus] ROB_ids[`RSSize - 1 : 0];           // id of inst
-reg [`DataWidth - 1 : 0] inst_pcs[`RSSize - 1 : 0]; // pc of inst
+reg [`AddrWidth - 1 : 0] inst_pcs[`RSSize - 1 : 0]; // pc of inst
 reg [`OpIdBus] OP_IDs[`RSSize - 1 : 0];             // what is the op ?
 reg [`RegIndexBus] rds[`RSSize - 1 : 0];            // rd
 reg [`RSSize - 1 : 0] rs1_valid_judger;
@@ -115,6 +117,20 @@ assign RS_ind_to_ALU = (occupied_judger[0] == `True && ready_judger[0] == `True)
                        (occupied_judger[14] == `True && ready_judger[14] == `True) ? 5'b01110 : 
                        (occupied_judger[15] == `True && ready_judger[15] == `True) ? 5'b01111 : 5'b10000;
 
+wire [`AddrWidth - 1 : 0] debug_inst_pc_to_ALU;
+assign debug_inst_pc_to_ALU = inst_pcs[RS_ind_to_ALU[3 : 0]];
+wire [`OpIdBus] debug_OP_ID_to_ALU;
+assign debug_OP_ID_to_ALU = OP_IDs[RS_ind_to_ALU[3 : 0]];
+
+wire [3 : 0] debug_ind_reg_rs1;
+assign debug_ind_reg_rs1 = RS_ind_to_ALU[3 : 0];
+wire [`DataWidth - 1 : 0] debug_reg_rs1;
+assign debug_reg_rs1 = reg_rs1s[RS_ind_to_ALU[3 : 0]];
+wire [`DataWidth - 1 : 0] debug_ROB_update_reg;
+assign debug_ROB_update_reg = (ROB_input_valid != `True) ? {32{1'b0}} : 
+                              (occupied_judger[RS_ind_to_ALU[3 : 0]] != `True) ? {{30{1'b0}}, 2'b01} : 
+                              (rs1_valid_judger[RS_ind_to_ALU[3 : 0]] != `False || id1s[RS_ind_to_ALU[3 : 0]] != ROB_update_ROB_id) ? {{30{1'b0}}, 2'b10} : ROB_value;
+
 wire [4 : 0] RS_ind_valid_pos; // RS from ID
 assign RS_ind_valid_pos = (occupied_judger[0] == `False || ready_judger[0] == `True) ? 5'b00000 : 
                           (occupied_judger[1] == `False || ready_judger[1] == `True) ? 5'b00001 : 
@@ -133,8 +149,24 @@ assign RS_ind_valid_pos = (occupied_judger[0] == `False || ready_judger[0] == `T
                           (occupied_judger[14] == `False || ready_judger[14] == `True) ? 5'b01110 : 
                           (occupied_judger[15] == `False || ready_judger[15] == `True) ? 5'b01111 : 5'b10000;
 
+wire [3 : 0] debug_ind_from_ID;
+assign debug_ind_from_ID = RS_ind_valid_pos[3 : 0];
+wire [`AddrWidth - 1 : 0] debug_inst_pc_from_ID;
+assign debug_inst_pc_from_ID = ID_inst_pc;
+wire [`OpIdBus] debug_OP_ID_from_ID;
+assign debug_OP_ID_from_ID = ID_OP_ID;
+wire debug_need_rs1_flag;
+assign debug_need_rs1_flag = RF_need_rs1_flag;
+wire [`DataWidth - 1 : 0] debug_reg_rs1_from_ID;
+assign debug_reg_rs1_from_ID = (RF_rs1_valid == `True) ? RF_reg_rs1 : {1'b1, {31{1'b0}}};  
+wire debug_need_rs2_flag;
+assign debug_need_rs2_flag = RF_need_rs2_flag;
+wire [`DataWidth - 1 : 0] debug_reg_rs2_from_ID;
+assign debug_reg_rs2_from_ID = (RF_rs2_valid == `True) ? RF_reg_rs2 : {1'b1, {31{1'b0}}}; 
+
 always @(*) begin
     IQ_RS_is_full = RS_is_full;
+    ID_RS_is_full = RS_is_full;
 end
 
 integer i;
@@ -168,6 +200,8 @@ always @(posedge clk) begin
             id2s[i] <= {4{1'b0}};
             imms[i] <= {32{1'b0}};
         end
+        // ALU_RS
+        ALU_output_valid <= `False;
     end
     else if(rdy == `False) begin
     end
@@ -228,21 +262,31 @@ always @(posedge clk) begin
             inst_pcs[RS_ind_valid_pos[3 : 0]] <= ID_inst_pc;
             OP_IDs[RS_ind_valid_pos[3 : 0]] <= ID_OP_ID;
             rds[RS_ind_valid_pos[3 : 0]] <= ID_rd;
-            if(RF_rs1_valid == `True || RF_need_rs1_flag == `False) begin
-                reg_rs1s[RS_ind_valid_pos[3 : 0]] <= RF_reg_rs1;
+            if(RF_need_rs1_flag == `True) begin
+                if(RF_rs1_valid == `True) begin
+                    reg_rs1s[RS_ind_valid_pos[3 : 0]] <= RF_reg_rs1;
+                    rs1_valid_judger[RS_ind_valid_pos[3 : 0]] <= `True;
+                end
+                else begin
+                    rs1_valid_judger[RS_ind_valid_pos[3 : 0]] <= `False;
+                    id1s[RS_ind_valid_pos[3 : 0]] <= RF_rs1_ROB_id;
+                end
+            end
+            else begin
                 rs1_valid_judger[RS_ind_valid_pos[3 : 0]] <= `True;
             end
-            else begin
-                rs1_valid_judger[RS_ind_valid_pos[3 : 0]] <= `False;
-                id1s[RS_ind_valid_pos[3 : 0]] <= RF_rs1_ROB_id;
+            if(RF_need_rs2_flag == `True) begin
+                if(RF_rs2_valid == `True) begin
+                    reg_rs2s[RS_ind_valid_pos[3 : 0]] <= RF_reg_rs2;
+                    rs2_valid_judger[RS_ind_valid_pos[3 : 0]] <= `True;
+                end
+                else begin
+                    rs2_valid_judger[RS_ind_valid_pos[3 : 0]] <= `False;
+                    id2s[RS_ind_valid_pos[3 : 0]] <= RF_rs2_ROB_id;
+                end
             end
-            if(RF_rs2_valid == `True || RF_need_rs2_flag == `False) begin
-                reg_rs2s[RS_ind_valid_pos[3 : 0]] <= RF_reg_rs2;
+            else begin
                 rs2_valid_judger[RS_ind_valid_pos[3 : 0]] <= `True;
-            end
-            else begin
-                rs2_valid_judger[RS_ind_valid_pos[3 : 0]] <= `False;
-                id2s[RS_ind_valid_pos[3 : 0]] <= RF_rs2_ROB_id;
             end
             imms[RS_ind_valid_pos[3 : 0]] <= ID_imm;
         end

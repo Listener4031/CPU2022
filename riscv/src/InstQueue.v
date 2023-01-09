@@ -25,6 +25,7 @@ module InstQueue(
     input wire [`AddrWidth - 1 : 0] IF_predicted_pc,
 
     // Decoder
+    input wire ID_ready,
     output reg ID_output_valid,
     output reg [`InstWidth - 1 : 0] ID_inst,
     output reg [`AddrWidth - 1 : 0] ID_inst_pc,
@@ -37,13 +38,13 @@ module InstQueue(
 );
 
 wire [`OpcodeBus] opcode;
-assign opcode = ID_inst[6 : 0];
+assign opcode = insts[head][6 : 0];
 
 wire is_LSB;
 assign is_LSB = (opcode == `OPCODE_L || opcode == `OPCODE_S) ? `True : `False;
 
 wire not_launch_inst;
-assign not_launch_inst = (siz == 5'b00000 || ROB_is_full == `True || (is_LSB == `False && RS_is_full) || (is_LSB == `True && LSB_is_full)) ? `True : `False;
+assign not_launch_inst = (siz == 5'b00000 || ID_ready == `False || ROB_is_full == `True || (is_LSB == `False && RS_is_full == `True) || (is_LSB == `True && LSB_is_full == `True)) ? `True : `False;
 
 reg [4 : 0] siz;
 reg [`IQIndexBus] head;
@@ -68,10 +69,13 @@ always @(posedge clk) begin
         siz <= 5'b00000;
         head <= 4'b0000;
         tail <= 4'b1111;
+        // ID
+        ID_output_valid <= `False;
     end
     else if(rdy == `False) begin
     end
     else if(ROB_roll_back_flag == `False) begin
+        // update siz
         if(not_launch_inst == `True) begin
             if(IF_input_valid == `True) siz <= siz + 5'b00001;
             else siz <= siz;
@@ -80,6 +84,7 @@ always @(posedge clk) begin
             if(IF_input_valid == `True) siz <= siz;
             else siz <= siz - 5'b00001;
         end
+        // check if launch
         if(not_launch_inst == `False) begin
             ID_output_valid <= `True;
             ID_inst <= insts[head];
@@ -91,6 +96,7 @@ always @(posedge clk) begin
         else begin
             ID_output_valid <= `False;
         end
+        // check if inqueue
         if(IF_input_valid == `True) begin
             insts[in_queue_pos] <= IF_inst;
             inst_pcs[in_queue_pos] <= IF_inst_pc;
@@ -103,6 +109,8 @@ always @(posedge clk) begin
         siz <= 5'b00000;
         head <= 4'b0000;
         tail <= 4'b1111;
+        // ID
+        ID_output_valid <= `False;
     end
 end
 

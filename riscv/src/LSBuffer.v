@@ -14,6 +14,7 @@ module LSBuffer(
     input wire [`OpIdBus] ID_OP_ID,
     input wire [`RegIndexBus] ID_rd,
     input wire [`ImmWidth - 1 : 0] ID_imm,
+    output reg ID_LSB_is_full,
 
     // RegFile
     input wire RF_need_rd_flag,
@@ -84,11 +85,15 @@ assign ready_judger[15] = ((rs1_valid_judger[15] == `True) && (rs2_valid_judger[
 wire LSB_is_full;
 assign LSB_is_full = (siz == 5'b10000 && (ready_judger[head] == `False || ALU_ready == `False)) ? `True : `False;
 
+wire LSB_full_warning;
+assign LSB_full_warning = (siz == 5'b01111 && (ready_judger[head] == `False || ALU_ready == `False)) ? `True : `False;
+
 wire [`LSBIndexBus] in_queue_pos;
 assign in_queue_pos = (tail == 4'b1111) ? 4'b0000 : (tail + 4'b0001);
 
 always @(*) begin
     IQ_LSB_is_full = LSB_is_full;
+    ID_LSB_is_full = LSB_is_full;
 end
 
 integer i;
@@ -113,6 +118,8 @@ always @(posedge clk) begin
         siz <= 5'b00000;
         head <= 4'b0000;
         tail <= 4'b1111;
+        // ALU_LS
+        ALU_output_valid <= `False;
     end
     else if(rdy == `False) begin
     end
@@ -131,6 +138,7 @@ always @(posedge clk) begin
                 end
             end
         end
+        // update siz
         if(ID_input_valid == `True) begin
             if(siz != 5'b00000 && ready_judger[head] == `True && ALU_ready == `True) siz <= siz;
             else siz <= siz + 5'b00001;
@@ -144,21 +152,31 @@ always @(posedge clk) begin
             inst_pcs[in_queue_pos] <= ID_inst_pc;
             OP_IDs[in_queue_pos] <= ID_OP_ID;
             rds[in_queue_pos] <= ID_rd;
-            if(RF_rs1_valid == `True || RF_need_rs1_flag == `False) begin
-                reg_rs1s[in_queue_pos] <= RF_reg_rs1;
+            if(RF_need_rs1_flag == `True) begin
+                if(RF_rs1_valid == `True) begin
+                    reg_rs1s[in_queue_pos] <= RF_reg_rs1;
+                    rs1_valid_judger[in_queue_pos] <= `True;
+                end
+                else begin
+                    rs1_valid_judger[in_queue_pos] <= `False;
+                    id1s[in_queue_pos] <= RF_rs1_ROB_id;
+                end
+            end
+            else begin
                 rs1_valid_judger[in_queue_pos] <= `True;
             end
-            else begin
-                rs1_valid_judger[in_queue_pos] <= `False;
-                id1s[in_queue_pos] <= RF_rs1_ROB_id;
+            if(RF_need_rs2_flag == `True) begin
+                if(RF_rs2_valid == `True) begin
+                    reg_rs2s[in_queue_pos] <= RF_reg_rs2;
+                    rs2_valid_judger[in_queue_pos] <= `True;
+                end
+                else begin
+                    rs2_valid_judger[in_queue_pos] <= `False;
+                    id2s[in_queue_pos] <= RF_rs2_ROB_id;
+                end
             end
-            if(RF_rs2_valid == `True || RF_need_rs2_flag == `False) begin
-                reg_rs2s[in_queue_pos] <= RF_reg_rs2;
+            else begin
                 rs2_valid_judger[in_queue_pos] <= `True;
-            end
-            else begin
-                rs2_valid_judger[in_queue_pos] <= `False;
-                id2s[in_queue_pos] <= RF_rs2_ROB_id;
             end
             imms[in_queue_pos] <= ID_imm;
             tail <= in_queue_pos;
@@ -173,11 +191,16 @@ always @(posedge clk) begin
             ALU_imm <= imms[head];
             ALU_ROB_id <= ROB_ids[head];
         end
+        else begin
+            ALU_output_valid <= `False;
+        end
     end
     else begin
         siz <= 5'b00000;
         head <= 4'b0000;
         tail <= 4'b1111;
+        // ALU_LS
+        ALU_output_valid <= `False;
     end
 end
 

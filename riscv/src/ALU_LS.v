@@ -50,14 +50,20 @@ always @(posedge clk) begin
         value <= {32{1'b0}};
         OP_ID <= {6{1'b0}};
         ROB_id <= {4{1'b0}};
+        // LSB
+        LSB_enable <= `True;
+        // ROB
+        ROB_ouptut_valid <=`False;
+        // MC
+        MC_need_load <= `False;
     end
     else if(rdy == `False) begin
     end
     else if(ROB_roll_back_flag == `False) begin
-        LSB_enable <= (status == 2'b00 || status == 2'b11) ? `True : `False;
-        if(LSB_input_valid == `True) begin         // status
+        LSB_enable <= (status == 2'b00) ? `True : `False;
+        if(LSB_input_valid == `True) begin         // status must be 2'b00
             if(is_store == `True) begin // store
-                if(MC_MSB_is_full == `True) begin
+                if(MC_MSB_is_full == `True) begin // 病态操作，从根本上防止发射
                     status <= 2'b10;
                     addr <= LSB_reg_rs1 + LSB_imm;
                     value <= LSB_reg_rs2;
@@ -111,7 +117,7 @@ always @(posedge clk) begin
             end
         end
         else if(status == 2'b10) begin // store
-            if(MC_MSB_is_full == `True) begin
+            if(MC_MSB_is_full == `True) begin // 病态操作，从根本上防止发射
                 // ROB
                 ROB_ouptut_valid <= `False;
                 // MC
@@ -128,6 +134,12 @@ always @(posedge clk) begin
                 MC_need_load <= `False;
             end
         end
+        else begin // no input && status == 2'b00;
+            // ROB
+            ROB_ouptut_valid <= `False;
+            // MC
+            MC_need_load <= `False;
+        end
     end
     else begin
         status <= 2'b00;
@@ -135,6 +147,12 @@ always @(posedge clk) begin
         value <= {32{1'b0}};
         OP_ID <= {6{1'b0}};
         ROB_id <= {4{1'b0}};
+         // LSB
+        LSB_enable <= `True;
+        // ROB
+        ROB_ouptut_valid <=`False;
+        // MC
+        MC_need_load <= `False;
     end
 end
 

@@ -81,10 +81,19 @@ always @(posedge clk) begin
     tail_of_MSB <= 3'b111;
     // fetch
     fetch_stage <= 4'b000;
+    fetch_addr <= 32'h0;
+    fetch_inst <= 32'b0;
     // load
     load_stage <= 4'b000;
     // store 
     store_stage <= 4'b000;
+    // cpu
+    is_write <= `False;
+    addr_to_ram <= 32'h0;
+    // IF
+    IF_output_valid <= `False;
+    // ALU_LS
+    ALU_LS_output_valid <= `False;
   end
   else if(rdy == `False) begin
   end
@@ -129,7 +138,7 @@ always @(posedge clk) begin
     // status
     if(status == 2'b00) begin      // IDLE
       is_write <= `False;
-      addr_to_ram <= {32{1'b0}};
+      addr_to_ram <= 32'h0;
       // IF
       IF_output_valid <= `False;
       // ALU_LS
@@ -145,7 +154,7 @@ always @(posedge clk) begin
       ALU_LS_output_valid <= `False; 
       if(fetch_stage == 4'b0000) begin
         is_write <= `False;
-        addr_to_ram <= {32{1'b0}};
+        addr_to_ram <= 32'h0;
         // IF
         IF_output_valid <= `False;
       end
@@ -159,7 +168,7 @@ always @(posedge clk) begin
       end
       else if(fetch_stage == 4'b0010) begin // StageOne -> second_launch -> StageTwo
         is_write <= `False;
-        addr_to_ram <= fetch_addr + {{31{1'b0}}, 1'b1};
+        addr_to_ram <= fetch_addr + 32'h1;
         // fetch area
         fetch_stage <= 4'b0011;
         // IF
@@ -167,7 +176,7 @@ always @(posedge clk) begin
       end
       else if(fetch_stage == 4'b0011) begin // StageTwo -> third_launch && get_first -> StageThree
         is_write <= `False;
-        addr_to_ram <= fetch_addr + {{32{1'b0}}, 2'b10};
+        addr_to_ram <= fetch_addr + 32'h2;
         // fetch area
         fetch_inst[7 : 0] <= data_in;
         fetch_stage <= 4'b0100;
@@ -176,7 +185,7 @@ always @(posedge clk) begin
       end
       else if(fetch_stage == 4'b0100) begin // StageThree -> fourth_launch && get_second -> StageFour
         is_write <= `False;
-        addr_to_ram <= fetch_addr + {{31{1'b0}}, 2'b11};
+        addr_to_ram <= fetch_addr + 32'h3;
         // fetch area
         fetch_inst[15 : 8] <= data_in;
         fetch_stage <= 4'b0101;
@@ -185,7 +194,7 @@ always @(posedge clk) begin
       end
       else if(fetch_stage == 4'b0101) begin // StageFour -> get_third -> StageFive
         is_write <= `False;
-        addr_to_ram <= {32{1'b0}};
+        addr_to_ram <= 32'h0;
         // fetch area
         fetch_inst[23 : 16] <= data_in;
         fetch_stage <= 4'b0110;
@@ -194,7 +203,7 @@ always @(posedge clk) begin
       end
       else if(fetch_stage == 4'b0110) begin
         is_write <= `False;
-        addr_to_ram <= {32{1'b0}};
+        addr_to_ram <= 32'h0;
         // fetch area
         fetch_inst[31: 24] <= data_in;
         fetch_stage <= 4'b0111;
@@ -203,7 +212,7 @@ always @(posedge clk) begin
       end
       else if(fetch_stage == 4'b0111) begin
         is_write <= `False;
-        addr_to_ram <= {32{1'b0}};
+        addr_to_ram <= 32'h0;
         // fetch area
         fetch_stage <= 4'b0000;
         // IF
@@ -216,7 +225,7 @@ always @(posedge clk) begin
       end
       else begin
         is_write <= `False;
-        addr_to_ram <= {32{1'b0}};
+        addr_to_ram <= 32'h0;
         // IF
         IF_output_valid <= `False;
       end
@@ -226,7 +235,7 @@ always @(posedge clk) begin
       if(load_OP_ID == `LB || load_OP_ID == `LBU) begin
         if(load_stage == 4'b0000) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // ALU_LS
           ALU_LS_output_valid <= `False;
         end
@@ -240,7 +249,7 @@ always @(posedge clk) begin
         end
         else if(load_stage == 4'b0010) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // load area
           load_stage <= 4'b0011;
           // ALU_LS
@@ -248,7 +257,7 @@ always @(posedge clk) begin
         end
         else if(load_stage == 4'b0011) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // load area
           load_stage <= 4'b0100;
           load_value[7 : 0] <= data_in;
@@ -257,7 +266,7 @@ always @(posedge clk) begin
         end
         else if(load_stage == 4'b0100) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // load area
           load_stage <= 4'b0000;
           // ALU_LS
@@ -266,7 +275,7 @@ always @(posedge clk) begin
         end
         else begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // ALU_LS
           ALU_LS_output_valid <= `False;
         end
@@ -274,7 +283,7 @@ always @(posedge clk) begin
       else if(load_OP_ID == `LH || load_OP_ID == `LBU) begin
         if(load_stage == 4'b0000) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // ALU_LS
           ALU_LS_output_valid <= `False;
         end
@@ -296,7 +305,7 @@ always @(posedge clk) begin
         end
         else if(load_stage == 4'b0011) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // load area
           load_stage <= 4'b0100;
           load_value[7 : 0] <= data_in;
@@ -305,7 +314,7 @@ always @(posedge clk) begin
         end
         else if(load_stage == 4'b0100) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // load area
           load_stage <= 4'b0101;
           load_value[15 : 8] <= data_in;
@@ -314,7 +323,7 @@ always @(posedge clk) begin
         end
         else if(load_stage == 4'b0101) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // load area
           load_stage <= 4'b0000;
           // ALU_LS
@@ -327,7 +336,7 @@ always @(posedge clk) begin
         end
         else begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // ALU_LS
           ALU_LS_output_valid <= `False;
         end
@@ -335,7 +344,7 @@ always @(posedge clk) begin
       else begin
         if(load_stage == 4'b0000) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // ALU_LS
           ALU_LS_output_valid <= `False;
         end
@@ -375,7 +384,7 @@ always @(posedge clk) begin
         end
         else if(load_stage == 4'b0101) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // load area
           load_stage <= 4'b0110;
           load_value[23 : 16] <= data_in;
@@ -384,7 +393,7 @@ always @(posedge clk) begin
         end
         else if(load_stage == 4'b0110) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // load area
           load_stage <= 4'b0111;
           load_value[31 : 24] <= data_in;
@@ -393,7 +402,7 @@ always @(posedge clk) begin
         end
         else if(load_stage == 4'b0111) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // load area
           load_stage <= 4'b000;
           // ALU_LS
@@ -406,7 +415,7 @@ always @(posedge clk) begin
         end
         else begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
           // ALU_LS
           ALU_LS_output_valid <= `False;
         end
@@ -418,7 +427,7 @@ always @(posedge clk) begin
       if(store_OP_ID == `SB) begin
         if(store_stage == 4'b0000) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
         end
         else if(store_stage == 4'b0001) begin
           is_write <= `True;
@@ -436,13 +445,13 @@ always @(posedge clk) begin
         end
         else begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
         end
       end
       else if(store_OP_ID == `SH) begin
         if(store_stage == 4'b0000) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
         end
         else if(store_stage == 4'b0001) begin
           is_write <= `True;
@@ -467,13 +476,13 @@ always @(posedge clk) begin
         end
         else begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
         end
       end
       else begin
         if(store_stage == 4'b0000) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
         end
         else if(store_stage == 4'b0001) begin
           is_write <= `True;
@@ -512,7 +521,7 @@ always @(posedge clk) begin
         end
         else begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
         end
       end
     end
@@ -529,7 +538,7 @@ always @(posedge clk) begin
       if(store_OP_ID == `SB) begin
         if(store_stage == 4'b0000) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
         end
         else if(store_stage == 4'b0001) begin
           is_write <= `True;
@@ -542,13 +551,13 @@ always @(posedge clk) begin
         end
         else begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
         end
       end
       else if(store_OP_ID == `SH) begin
         if(store_stage == 4'b0000) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
         end
         else if(store_stage == 4'b0001) begin
           is_write <= `True;
@@ -568,13 +577,13 @@ always @(posedge clk) begin
         end
         else begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
         end
       end
       else begin
         if(store_stage == 4'b0000) begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
         end
         else if(store_stage == 4'b0001) begin
           is_write <= `True;
@@ -608,14 +617,18 @@ always @(posedge clk) begin
         end
         else begin
           is_write <= `False;
-          addr_to_ram <= {32{1'b0}};
+          addr_to_ram <= 32'h0;
         end
       end
     end
     else begin
       status <= 2'b00;
       is_write <= `False;
-      addr_to_ram <= {32{1'b0}};
+      addr_to_ram <= 32'h0;
+      // IF
+      IF_output_valid <= `False;
+      // ALU_LS
+      ALU_LS_output_valid <= `False;
     end
   end
 end

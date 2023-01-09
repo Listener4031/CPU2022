@@ -27,7 +27,7 @@ module InstFetcher(
 
     // roll back
     input wire ROB_roll_back_flag,
-    input wire ROB_roll_back_pc
+    input wire [`AddrWidth - 1 : 0] ROB_roll_back_pc
     
 );
 
@@ -43,7 +43,7 @@ wire hit;
 assign hit = (occupied_judger[fetch_pc[`ICacheIndex]] == `True && tags[fetch_pc[`ICacheIndex]] == fetch_pc[31 : 10]) ? `True : `False;
 
 always @(*) begin
-    PDC_inst = (hit == `True) ? insts[fetch_pc[`ICacheIndex]] : {32{1'b0}};
+    PDC_inst = (hit == `True) ? insts[fetch_pc[`ICacheIndex]] : MC_inst;
     PDC_inst_pc = fetch_pc;
 end
 
@@ -56,8 +56,12 @@ always @(posedge clk) begin
             tags[i] <= {22{1'b0}};
             insts[i] <= {32{1'b0}};
         end
-        fetch_pc <= {32{1'b0}};
+        fetch_pc <= 32'h0;
         status <= 1'b0;
+        // MC
+        MC_need_fetch <= `False;
+        // IQ
+        IQ_output_valid <= `False;
     end
     else if(rdy == `False) begin
     end
@@ -118,6 +122,10 @@ always @(posedge clk) begin
     else begin // roll back
         fetch_pc <= ROB_roll_back_pc;
         status <= 1'b0;
+        // MC
+        MC_need_fetch <= `False;
+        // IQ
+        IQ_output_valid <= `False;
     end
 end
 

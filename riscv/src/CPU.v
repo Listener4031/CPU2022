@@ -67,12 +67,27 @@ wire [`DataWidth - 1 : 0] RS_reg_rs2_to_ALU_RS;
 wire [`ImmWidth - 1 : 0] RS_imm_to_ALU_RS;
 wire [`ROBIDBus] RS_ROB_id_to_ALU_RS;
 
+// ROB to ALU_RS
+wire ROB_roll_back_flag_to_ALU_RS;
+
+// ROB to ID
+wire ROB_is_full_to_ID;
+
+// RS to ID
+wire RS_is_full_to_ID;
+
+// LSB to ID
+wire LSB_is_full_to_ID;
+
 // IQ to ID
 wire IQ_input_valid_to_ID;                    // `True -> IQ_inst could be used
 wire [`InstWidth - 1 : 0] IQ_inst_to_ID;
 wire [`AddrWidth - 1 : 0] IQ_inst_pc_to_ID;
 wire IQ_predicted_to_jump_to_ID;
 wire [`AddrWidth - 1 : 0] IQ_predicted_pc_to_ID;
+
+// ROB to ID
+wire ROB_roll_back_flag_to_ID;
 
 // MC to IF
 wire MC_input_valid_to_IF;
@@ -87,7 +102,7 @@ wire IQ_is_full_to_IF;                          // `False -> 尝试 fetch
 
 // ROB to IF
 wire ROB_roll_back_flag_to_IF;
-wire ROB_roll_back_pc_to_IF;
+wire [`AddrWidth - 1 : 0] ROB_roll_back_pc_to_IF;
 
 // ROB to IQ
 wire ROB_is_full_to_IQ;
@@ -104,6 +119,9 @@ wire [`InstWidth - 1 : 0] IF_inst_to_IQ;
 wire [`AddrWidth - 1 : 0] IF_inst_pc_to_IQ;
 wire IF_predicted_to_jump_to_IQ;
 wire [`AddrWidth - 1 : 0] IF_predicted_pc_to_IQ;
+
+// ID to IQ
+wire ID_ready_to_IQ;
 
 // ROB to IQ
 wire ROB_roll_back_flag_to_IQ;
@@ -286,7 +304,10 @@ ALU_RS cpu_ALU_RS(
   .ROB_ROB_id(ALU_RS_ROB_id_to_ROB),
   .ROB_value(ALU_RS_value_to_ROB),
   .ROB_targeted_pc(ALU_RS_targeted_pc_to_ROB), // pc should to be 
-  .ROB_jump_flag(ALU_RS_jump_flag_to_ROB)                         // 是否要跳转
+  .ROB_jump_flag(ALU_RS_jump_flag_to_ROB),                         // 是否要跳转
+
+    // roll back
+  .ROB_roll_back_flag(ROB_roll_back_flag_to_ALU_RS)
 );
 
 Decoder cpu_Decoder(
@@ -294,12 +315,22 @@ Decoder cpu_Decoder(
   .rst(rst_in),
   .rdy(rdy_in),
 
+    // ReorderBuffer
+  .ROB_is_full(ROB_is_full_to_ID),
+
+    // RsvStation
+  .RS_is_full(RS_is_full_to_ID),
+
+    // LSBuffer
+  .LSB_is_full(LSB_is_full_to_ID),
+
     // InstQueue
   .IQ_input_valid(IQ_input_valid_to_ID),                    // `True -> IQ_inst could be used
   .IQ_inst(IQ_inst_to_ID),
   .IQ_inst_pc(IQ_inst_pc_to_ID),
   .IQ_predicted_to_jump(IQ_predicted_to_jump_to_ID),
   .IQ_predicted_pc(IQ_predicted_pc_to_ID),
+  .IQ_enable(ID_ready_to_IQ),
     
     // LSBuffer
   .LSB_output_valid(ID_input_valid_to_LSB),
@@ -329,7 +360,10 @@ Decoder cpu_Decoder(
   .ROB_OP_ID(ID_OP_ID_to_ROB),
   .ROB_rd(ID_rd_to_ROB),
   .ROB_predicted_to_jump(ID_predicted_to_jump_to_ROB),
-  .ROB_predicted_pc(ID_predicted_pc_to_ROB)
+  .ROB_predicted_pc(ID_predicted_pc_to_ROB),
+
+    // roll back
+  .ROB_roll_back_flag(ROB_roll_back_flag_to_ID)
 );
 
 InstFetcher cpu_InstFetcher(
@@ -387,6 +421,7 @@ InstQueue cpu_InstQueue(
   .IF_predicted_pc(IF_predicted_pc_to_IQ),
 
     // Decoder
+  .ID_ready(ID_ready_to_IQ),
   .ID_output_valid(IQ_input_valid_to_ID),
   .ID_inst(IQ_inst_to_ID),
   .ID_inst_pc(IQ_inst_pc_to_ID),
@@ -411,6 +446,7 @@ LSBuffer cpu_LSBuffer(
   .ID_OP_ID(ID_OP_ID_to_LSB),
   .ID_rd(ID_rd_to_LSB),
   .ID_imm(ID_imm_to_LSB),
+  .ID_LSB_is_full(LSB_is_full_to_ID),
 
     // RegFile
   .RF_need_rd_flag(RF_need_rd_flag_to_LSB),
@@ -562,6 +598,7 @@ ReorderBuffer cpu_ReorderBuffer(
   .ID_rd(ID_rd_to_ROB),
   .ID_predicted_to_jump(ID_predicted_to_jump_to_ROB),
   .ID_predicted_pc(ID_predicted_pc_to_ROB),
+  .ID_ROB_is_full(ROB_is_full_to_ID),
     
     // RsvStation
   .RS_ROB_id(ROB_new_ID_to_RS),         // new ROB_id for a new RS(当前的)
@@ -606,21 +643,25 @@ ReorderBuffer cpu_ReorderBuffer(
   .PDC_inst_pc(ROB_pc_to_PDC),
 
     // roll back
-    // MC
-  .MC_roll_back_flag(ROB_roll_back_flag_to_MC),
-    // IF
+    // ALU_LS
+  .ALU_LS_roll_back_flag(ROB_roll_back_flag_to_ALU_LS),
+    // ALU_RS
+  .ALU_RS_roll_back_flag(ROB_roll_back_flag_to_ALU_RS),
+    // Decoder
+  .ID_roll_back_flag(ROB_roll_back_flag_to_ID),
+    // InstFetcher
   .IF_roll_back_flag(ROB_roll_back_flag_to_IF),
   .IF_roll_back_pc(ROB_roll_back_pc_to_IF),
-    // IQ
+    // InstQueue
   .IQ_roll_back_flag(ROB_roll_back_flag_to_IQ),
-    // LSB
+    // LSBuffer
   .LSB_roll_back_flag(ROB_roll_back_flag_to_LSB),
-    // RS
-  .RS_roll_back_flag(ROB_roll_back_flag_to_RS),
-    // RF
+    // MemControllor
+  .MC_roll_back_flag(ROB_roll_back_flag_to_MC),
+    // RegFile
   .RF_roll_back_flag(ROB_roll_back_flag_to_RF),
-    // ALU_LS
-  .ALU_LS_roll_back_flag(ROB_roll_back_flag_to_ALU_LS)
+    // RsvStation
+  .RS_roll_back_flag(ROB_roll_back_flag_to_RS)
 );
 
 RsvStation cpu_RsvStation(
@@ -637,6 +678,7 @@ RsvStation cpu_RsvStation(
   .ID_OP_ID(ID_OP_ID_to_RS),
   .ID_rd(ID_rd_to_RS),
   .ID_imm(ID_imm_to_RS),
+  .ID_RS_is_full(RS_is_full_to_ID),
     
     // ReorderBuffer
   .ROB_new_ID(ROB_new_ID_to_RS),
