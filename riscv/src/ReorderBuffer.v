@@ -28,6 +28,8 @@ module ReorderBuffer(
     output reg LSB_output_valid,
     output reg [`RegIndexBus] LSB_update_ROB_id,
     output reg [`DataWidth - 1 : 0] LSB_value,
+    output reg LSB_head_store_to_launch,
+    output reg [`ROBIndexBus] LSB_head_ROB_id,
 
     // ALU_RS
     input wire ALU_RS_input_valid,
@@ -99,7 +101,8 @@ reg [1 : 0] roll_back_flag;
 reg [`AddrWidth - 1 : 0] roll_back_pc;
 
 wire ROB_is_full;
-assign ROB_is_full = (siz == 5'b10000 && ready_judger[head] == `False) ? `True : `False;
+assign ROB_is_full = (siz == 5'b10000 || (siz == 5'b01111 && ready_judger[head] == `False)) ? `True : `False;
+//assign ROB_is_full = (siz == 5'b10000 && ready_judger[head] == `False) ? `True : `False;
 
 wire ROB_full_warning;
 assign ROB_full_warning = (siz == 5'b01111 && ready_judger[head] == `False) ? `True : `False;
@@ -168,22 +171,12 @@ assign is_branch = (OP_IDs[head] == `JAL || OP_IDs[head] == `JALR || OP_IDs[head
 always @(*) begin
     IQ_ROB_is_full = ROB_is_full;
     ID_ROB_is_full = ROB_is_full;
+    LSB_head_store_to_launch = (siz != 5'b00000 && ready_judger[head] == `True && OP_ID_differentiator5 == `True) ? `True : `False;
+    LSB_head_ROB_id = head;
 end
 
 integer i;
-/*
-reg [4 : 0] siz; 
-reg [`ROBIndexBus] head; // 指向第一个
-reg [`ROBIndexBus] tail; // 指向最后一个
-// queue index -> ROB_id
-reg [`ROBSize - 1 : 0] ready_judger;     // head is `True -> update
-reg [`OpIdBus] OP_IDs[`ROBSize - 1 : 0];
-reg [`DataWidth - 1 : 0] inst_pcs[`ROBSize - 1 : 0];
-reg [`RegIndexBus] rds[`ROBSize - 1 : 0];
-reg [`DataWidth - 1 : 0] values[`ROBSize - 1 : 0];
-reg [`AddrWidth - 1 : 0] addrs[`ROBSize - 1 : 0]; // ls
-reg [`AddrWidth - 1 : 0] predicted_pcs[`ROBSize - 1 : 0]; // jal, jalr, br
-*/
+
 always @(posedge clk) begin
     if(rst == `True) begin
         roll_back_flag <= 2'b00;
@@ -310,6 +303,12 @@ always @(posedge clk) begin
             else begin
                 PDC_output_valid <= `False;
             end
+            // debug
+            if(inst_pcs[head] == 32'h10a4 || inst_pcs[head] == 32'h11dc || inst_pcs[head] == 32'h120c || inst_pcs[head] == 32'h1238) begin
+                $display(" ");
+                $display("inst_pc is %h", inst_pcs[head]);
+                $display("value is %b", values[head][7 : 0]);
+            end
         end
         else begin
             RS_output_valid <= `False;
@@ -350,6 +349,8 @@ always @(posedge clk) begin
         RF_roll_back_flag <= `True;
         // RS
         RS_roll_back_flag <= `True;
+        // debug
+        //$display("roll back");
     end
     else begin
         roll_back_flag <= 2'b00;

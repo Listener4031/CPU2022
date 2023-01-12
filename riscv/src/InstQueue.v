@@ -58,7 +58,7 @@ wire [`IQIndexBus] in_queue_pos;
 assign in_queue_pos = (tail == 4'b1111) ? 4'b0000 : (tail + 4'b0001);
 
 wire IQ_is_full;
-assign IQ_is_full = (siz == 5'b10000 && not_launch_inst == `True);
+assign IQ_is_full = (siz == 5'b10000 || (siz == 5'b01111 && not_launch_inst == `True));
 
 always @(*) begin
     IF_IQ_is_full = IQ_is_full;

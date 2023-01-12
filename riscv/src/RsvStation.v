@@ -81,6 +81,8 @@ assign ready_judger[14] = ((rs1_valid_judger[14] == `True) && (rs2_valid_judger[
 assign ready_judger[15] = ((rs1_valid_judger[15] == `True) && (rs2_valid_judger[15] == `True)) ? `True : `False;
 
 wire RS_is_full;
+assign RS_is_full = (siz == 5'b10000 || (siz == 5'b01111 && RS_ind_to_ALU == 5'b10000)) ? `True : `False;
+/*
 assign RS_is_full = ((occupied_judger[0] == `True && ready_judger[0] == `False) 
                   && (occupied_judger[1] == `True && ready_judger[1] == `False)
                   && (occupied_judger[2] == `True && ready_judger[2] == `False)
@@ -97,6 +99,7 @@ assign RS_is_full = ((occupied_judger[0] == `True && ready_judger[0] == `False)
                   && (occupied_judger[13] == `True && ready_judger[13] == `False)
                   && (occupied_judger[14] == `True && ready_judger[14] == `False)
                   && (occupied_judger[15] == `True && ready_judger[15] == `False)) ? `True : `False;
+*/
 // 弹出也弹出不了
 
 wire [4 : 0] RS_ind_to_ALU; // RS to ALU_RS
@@ -149,20 +152,12 @@ assign RS_ind_valid_pos = (occupied_judger[0] == `False || ready_judger[0] == `T
                           (occupied_judger[14] == `False || ready_judger[14] == `True) ? 5'b01110 : 
                           (occupied_judger[15] == `False || ready_judger[15] == `True) ? 5'b01111 : 5'b10000;
 
-wire [3 : 0] debug_ind_from_ID;
-assign debug_ind_from_ID = RS_ind_valid_pos[3 : 0];
-wire [`AddrWidth - 1 : 0] debug_inst_pc_from_ID;
-assign debug_inst_pc_from_ID = ID_inst_pc;
-wire [`OpIdBus] debug_OP_ID_from_ID;
-assign debug_OP_ID_from_ID = ID_OP_ID;
-wire debug_need_rs1_flag;
-assign debug_need_rs1_flag = RF_need_rs1_flag;
-wire [`DataWidth - 1 : 0] debug_reg_rs1_from_ID;
-assign debug_reg_rs1_from_ID = (RF_rs1_valid == `True) ? RF_reg_rs1 : {1'b1, {31{1'b0}}};  
-wire debug_need_rs2_flag;
-assign debug_need_rs2_flag = RF_need_rs2_flag;
-wire [`DataWidth - 1 : 0] debug_reg_rs2_from_ID;
-assign debug_reg_rs2_from_ID = (RF_rs2_valid == `True) ? RF_reg_rs2 : {1'b1, {31{1'b0}}}; 
+wire debug_from_ID_rs1_valid;
+assign debug_from_ID_rs1_valid = rs1_valid_judger[1];
+wire debug_from_ID_rs2_valid;
+assign debug_from_ID_rs2_valid = rs2_valid_judger[1];
+wire [`AddrWidth - 1 : 0] debug_from_ID_inst_pc;
+assign debug_from_ID_inst_pc = inst_pcs[1];
 
 always @(*) begin
     IQ_RS_is_full = RS_is_full;
@@ -170,22 +165,114 @@ always @(*) begin
 end
 
 integer i;
+
+always @(posedge clk) begin
+    if(rst == `True) begin
+        siz <= 5'b00000;
+        for(i = 0; i < `RSSize; i = i + 1) begin
+            occupied_judger[i] <= `False;
+        end
+        // ALU_RS
+        ALU_output_valid <= `False;
+    end
+    else if(rdy == `False) begin
+    end
+    else if(ROB_roll_back_flag == `False) begin
+        // ROB update RS
+        if(ROB_input_valid == `True) begin
+            for(i = 0; i < `RSSize; i = i + 1) begin
+                if(occupied_judger[i] == `True) begin
+                    if(rs1_valid_judger[i] == `False && id1s[i] == ROB_update_ROB_id) begin
+                        rs1_valid_judger[i] <= `True;
+                        reg_rs1s[i] <= ROB_value;
+                    end
+                    if(rs2_valid_judger[i] == `False && id2s[i] == ROB_update_ROB_id) begin
+                        rs2_valid_judger[i] <= `True;
+                        reg_rs2s[i] <= ROB_value;
+                    end 
+                end
+            end
+        end
+        // update siz
+        if(ID_input_valid == `True) begin
+            if(RS_ind_to_ALU == 5'b10000) siz <= siz + 5'b00001;
+            else siz <= siz;
+        end
+        else begin
+            if(RS_ind_to_ALU == 5'b10000) siz <= siz;
+            else siz <= siz - 5'b00001;
+        end
+        // to ALU
+        if(RS_ind_to_ALU == 5'b10000) begin // 没有可以进入 ALU 的
+            ALU_output_valid <= `False;
+        end
+        else begin
+            // reg
+            occupied_judger[RS_ind_to_ALU[3 : 0]] <= `False;
+            rs1_valid_judger[RS_ind_to_ALU[3 : 0]] <= `False;
+            rs2_valid_judger[RS_ind_to_ALU[3 : 0]] <= `False;
+            // output
+            ALU_output_valid <= `True;
+            ALU_OP_ID <= OP_IDs[RS_ind_to_ALU[3 : 0]];
+            ALU_inst_pc <= inst_pcs[RS_ind_to_ALU[3 : 0]];
+            ALU_reg_rs1 <= reg_rs1s[RS_ind_to_ALU[3 : 0]];
+            ALU_reg_rs2 <= reg_rs2s[RS_ind_to_ALU[3 : 0]];
+            ALU_imm <= imms[RS_ind_to_ALU[3 : 0]];
+            ALU_ROB_id <= ROB_ids[RS_ind_to_ALU[3 : 0]];
+        end
+        // from ID
+        if(ID_input_valid == `True) begin
+            // reg 
+            occupied_judger[RS_ind_valid_pos[3 : 0]] <= `True;
+            ROB_ids[RS_ind_valid_pos[3 : 0]] <= ROB_new_ID;
+            inst_pcs[RS_ind_valid_pos[3 : 0]] <= ID_inst_pc;
+            OP_IDs[RS_ind_valid_pos[3 : 0]] <= ID_OP_ID;
+            rds[RS_ind_valid_pos[3 : 0]] <= ID_rd;
+            if(RF_need_rs1_flag == `True) begin
+                if(RF_rs1_valid == `True) begin
+                    reg_rs1s[RS_ind_valid_pos[3 : 0]] <= RF_reg_rs1;
+                    rs1_valid_judger[RS_ind_valid_pos[3 : 0]] <= `True;
+                end
+                else begin
+                    rs1_valid_judger[RS_ind_valid_pos[3 : 0]] <= `False;
+                    id1s[RS_ind_valid_pos[3 : 0]] <= RF_rs1_ROB_id;
+                end
+            end
+            else begin
+                rs1_valid_judger[RS_ind_valid_pos[3 : 0]] <= `True;
+            end
+            if(RF_need_rs2_flag == `True) begin
+                if(RF_rs2_valid == `True) begin
+                    reg_rs2s[RS_ind_valid_pos[3 : 0]] <= RF_reg_rs2;
+                    rs2_valid_judger[RS_ind_valid_pos[3 : 0]] <= `True;
+                end
+                else begin
+                    rs2_valid_judger[RS_ind_valid_pos[3 : 0]] <= `False;
+                    id2s[RS_ind_valid_pos[3 : 0]] <= RF_rs2_ROB_id;
+                end
+            end
+            else begin
+                rs2_valid_judger[RS_ind_valid_pos[3 : 0]] <= `True;
+            end
+            imms[RS_ind_valid_pos[3 : 0]] <= ID_imm;
+        end
+    end
+    else begin
+        siz <= 5'b00000;
+        for(i = 0; i < `RSSize; i = i + 1) begin
+            occupied_judger[i] <= `False;
+        end
+        // ALU_RS
+        ALU_output_valid <= `False;
+    end
+end
+
+endmodule
+
 /*
-reg [`RSSize - 1 : 0] occupied_judger;              // is this position valid ?
-reg [`ROBIDBus] ROB_ids[`RSSize - 1 : 0];           // id of inst
-reg [`DataWidth - 1 : 0] inst_pcs[`RSSize - 1 : 0]; // pc of inst
-reg [`OpIdBus] OP_IDs[`RSSize - 1 : 0];             // what is the op ?
-reg [`RegIndexBus] rds[`RSSize - 1 : 0];            // rd
-reg [`RSSize - 1 : 0] rs1_valid_judger;
-reg [`RSSize - 1 : 0] rs2_valid_judger;             // `Fasle -> need ROB_id
-reg [`DataWidth - 1 : 0] reg_rs1s[`RSSize - 1 : 0]; 
-reg [`DataWidth - 1 : 0] reg_rs2s[`RSSize - 1 : 0];
-reg [`ROBIDBus] id1s[`RSSize - 1 : 0];
-reg [`ROBIDBus] id2s[`RSSize - 1 : 0];
-reg [`ImmWidth - 1 : 0] imms[`RSSize - 1 : 0];
-*/
 always @(posedge clk) begin
     if(rst == `True || ROB_roll_back_flag == `True) begin
+        siz <= 5'b00000;
         for(i = 0; i < `RSSize; i = i + 1) begin
             occupied_judger[i] <= `False;
             ROB_ids[i] <= {4{1'b0}};
@@ -292,5 +379,4 @@ always @(posedge clk) begin
         end
     end
 end
-
-endmodule
+*/

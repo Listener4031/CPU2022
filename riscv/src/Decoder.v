@@ -1,5 +1,5 @@
 `include "/Users/weijie/Desktop/CPU2022/riscv/src/defines.v"
-// 周期任务：分解从IC进来（如果有）的指令
+
 module Decoder(
     input wire clk,
     input wire rst,
@@ -30,7 +30,7 @@ module Decoder(
     output reg [`ImmWidth - 1 : 0] LSB_imm,
 
     // RegFile
-    output reg RF_rd_valid,                      // from RF get ROB_id
+    output reg RF_rd_valid,                        // from RF get ROB_id
     output reg [`RegIndexBus] RF_rd,           
     output reg RF_rs1_valid,
     output reg [`RegIndexBus] RF_rs1,
@@ -100,6 +100,9 @@ always @(posedge clk) begin
     end
     else if(ROB_roll_back_flag == `False) begin
         if(global_full == `True) begin
+            if(IQ_input_valid == `True && occupied_judger != `False) begin
+                $display("ccc");
+            end
             if(IQ_input_valid == `True) begin // occupied_judger must be `False
                 occupied_judger <= `True;
                 saved_inst <= IQ_inst;
@@ -837,6 +840,7 @@ always @(posedge clk) begin
             end
             else begin
                 if(occupied_judger == `True) begin
+                    occupied_judger <= `False;
                     // launch saved
                     if(opcode == `OPCODE_LUI) begin
                         // LSB

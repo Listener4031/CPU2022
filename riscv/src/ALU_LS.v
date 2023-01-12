@@ -37,11 +37,15 @@ module ALU_LS(
 wire is_store;
 assign is_store = (LSB_OP_ID == `SB || LSB_OP_ID == `SH || LSB_OP_ID == `SW) ? `True : `False;
 
-reg [1 : 0] status;             // 00 -> ready, 01 -> load, 10 -> store, 11 -> none
+reg [1 : 0] status;            // 00 -> ready, 01 -> load, 10 -> store, 11 -> none
 reg [`AddrWidth - 1 : 0] addr;
 reg [`DataWidth - 1 : 0] value;
 reg [`OpIdBus] OP_ID;
 reg [`ROBIDBus] ROB_id;
+
+always @(*) begin
+    LSB_enable = (status == 2'b00 && LSB_input_valid == `False) ? `True : `False;
+end
 
 always @(posedge clk) begin
     if(rst == `True) begin
@@ -50,8 +54,6 @@ always @(posedge clk) begin
         value <= {32{1'b0}};
         OP_ID <= {6{1'b0}};
         ROB_id <= {4{1'b0}};
-        // LSB
-        LSB_enable <= `True;
         // ROB
         ROB_ouptut_valid <=`False;
         // MC
@@ -60,7 +62,9 @@ always @(posedge clk) begin
     else if(rdy == `False) begin
     end
     else if(ROB_roll_back_flag == `False) begin
-        LSB_enable <= (status == 2'b00) ? `True : `False;
+        if(LSB_input_valid == `True && status != 2'b00) begin
+            $display("eee");
+        end
         if(LSB_input_valid == `True) begin         // status must be 2'b00
             if(is_store == `True) begin // store
                 if(MC_MSB_is_full == `True) begin // 病态操作，从根本上防止发射
@@ -147,8 +151,6 @@ always @(posedge clk) begin
         value <= {32{1'b0}};
         OP_ID <= {6{1'b0}};
         ROB_id <= {4{1'b0}};
-         // LSB
-        LSB_enable <= `True;
         // ROB
         ROB_ouptut_valid <=`False;
         // MC

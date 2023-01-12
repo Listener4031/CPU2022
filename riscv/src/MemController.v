@@ -68,7 +68,7 @@ reg [`AddrWidth - 1 : 0] store_addr;
 reg [`DataWidth - 1 : 0] store_value;
 
 always @(*) begin
-  ALU_LS_MSB_is_full = (size_of_MSB == 4'b1000) ? `True : `False;
+  ALU_LS_MSB_is_full = (size_of_MSB == 4'b1000 || size_of_MSB == 4'b0111) ? `True : `False;
 end
 
 always @(posedge clk) begin
@@ -80,9 +80,9 @@ always @(posedge clk) begin
     head_of_MSB <= 3'b000;
     tail_of_MSB <= 3'b111;
     // fetch
-    fetch_stage <= 4'b000;
+    fetch_stage <= 4'b0000;
     fetch_addr <= 32'h0;
-    fetch_inst <= 32'b0;
+    fetch_inst <= {32{1'b0}};
     // load
     load_stage <= 4'b000;
     // store 
@@ -98,7 +98,11 @@ always @(posedge clk) begin
   else if(rdy == `False) begin
   end
   else if(ROB_roll_back_flag == `False) begin
-    // store buffer
+    // debug
+    if(size_of_MSB != 4'b0000 && status == 2'b00 && store_stage == 4'b0000 && load_stage == 4'b0001) begin
+      $display("www");
+    end
+    // store queue
     if(ROB_input_valid == `True) begin // 直接进队
       addrs[in_queue_pos] <= ROB_addr;
       values[in_queue_pos] <= ROB_value;
@@ -145,10 +149,21 @@ always @(posedge clk) begin
       ALU_LS_output_valid <= `False;
       // update 
       if(store_stage == 4'b0001) status <= 2'b11;
+      else if(size_of_MSB == 4'b0000) begin
+        if(fetch_stage == 4'b0001) status <= 2'b01;
+        else if(load_stage == 4'b0001) status <= 2'b10;
+        else status <= 2'b00;
+      end
+      else begin
+        status <= 2'b00;
+      end
+      /*
+      if(store_stage == 4'b0001) status <= 2'b11;
       else if(fetch_stage == 4'b0001) status <= 2'b01;
       else if(load_stage == 4'b0001) status <= 2'b10;
       else begin
       end
+      */
     end
     else if(status == 2'b01) begin // fetch
       ALU_LS_output_valid <= `False; 
@@ -271,7 +286,11 @@ always @(posedge clk) begin
           load_stage <= 4'b0000;
           // ALU_LS
           ALU_LS_output_valid <= `True;
-          ALU_LS_value <= (load_OP_ID == `LB) ? $signed(load_value) : load_value;
+          ALU_LS_value <= (load_OP_ID == `LB) ? $signed({{24{1'b0}}, load_value[7 : 0]}) : {{24{1'b0}}, load_value[7 : 0]};
+          // update status
+          if(store_stage == 4'b0001) status <= 2'b11;
+          else if(fetch_stage == 4'b0001) status <= 2'b01;
+          else status <= 2'b00;
         end
         else begin
           is_write <= `False;
@@ -328,7 +347,7 @@ always @(posedge clk) begin
           load_stage <= 4'b0000;
           // ALU_LS
           ALU_LS_output_valid <= `True;
-          ALU_LS_value <= (load_OP_ID == `LH) ? $signed(load_value) : load_value;
+          ALU_LS_value <= (load_OP_ID == `LH) ? $signed({{16{1'b0}}, load_value[15 : 0]}) : {{16{1'b0}}, load_value[15 : 0]};
           // update status
           if(store_stage == 4'b0001) status <= 2'b11;
           else if(fetch_stage == 4'b0001) status <= 2'b01;
@@ -341,7 +360,7 @@ always @(posedge clk) begin
           ALU_LS_output_valid <= `False;
         end
       end
-      else begin
+      else begin // lw
         if(load_stage == 4'b0000) begin
           is_write <= `False;
           addr_to_ram <= 32'h0;
@@ -407,7 +426,7 @@ always @(posedge clk) begin
           load_stage <= 4'b000;
           // ALU_LS
           ALU_LS_output_valid <= `True;
-          ALU_LS_value <= $signed(load_value);
+          ALU_LS_value <= load_value;
           // update status
           if(store_stage == 4'b0001) status <= 2'b11;
           else if(fetch_stage == 4'b0001) status <= 2'b01;

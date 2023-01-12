@@ -126,6 +126,13 @@ end
 
 integer i;
 
+always @(*) begin
+    if(ROB_input_valid == `True) begin
+        register[ROB_rd] = (ROB_rd == 5'b00000) ? {32{1'b0}} : ROB_value;
+        invalid_judger[ROB_rd] = `False;
+    end
+end
+
 always @(posedge clk) begin
     if(rst == `True) begin
         for(i = 0; i < `RegSize; i = i + 1) begin
@@ -140,10 +147,12 @@ always @(posedge clk) begin
             invalid_judger[ID_rd] <= `True;
             ROB_ids[ID_rd] <= ROB_rd_ROB_id;
         end
+        /*
         if(ROB_input_valid == `True) begin
             if(ROB_rd != 5'b00000) register[ROB_rd] <= ROB_value;
             invalid_judger[ROB_rd] <= `False;
         end
+        */
     end
     else begin
         for(i = 0; i < `RegSize; i = i + 1) begin

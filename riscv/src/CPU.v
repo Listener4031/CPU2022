@@ -151,6 +151,8 @@ wire [`ROBIDBus] ROB_new_ID_to_LSB;
 wire ROB_input_valid_to_LSB;
 wire [`RegIndexBus] ROB_update_ROB_id_to_LSB;
 wire [`DataWidth - 1 : 0] ROB_value_to_LSB;
+wire ROB_head_store_to_launch_to_LSB;
+wire [`ROBIndexBus] ROB_head_ROB_id_to_LSB;
 
 // ALU_LS to LSB
 wire ALU_ready_to_LSB;
@@ -466,6 +468,8 @@ LSBuffer cpu_LSBuffer(
   .ROB_input_valid(ROB_input_valid_to_LSB),
   .ROB_update_ROB_id(ROB_update_ROB_id_to_LSB),
   .ROB_value(ROB_value_to_LSB),
+  .ROB_head_store_to_launch(ROB_head_store_to_launch_to_LSB),
+  .ROB_head_ROB_id(ROB_head_ROB_id_to_LSB),
 
     // ALU_LS
   .ALU_ready(ALU_ready_to_LSB),
@@ -611,6 +615,8 @@ ReorderBuffer cpu_ReorderBuffer(
   .LSB_output_valid(ROB_input_valid_to_LSB),
   .LSB_update_ROB_id(ROB_update_ROB_id_to_LSB),
   .LSB_value(ROB_value_to_LSB),
+  .LSB_head_store_to_launch(ROB_head_store_to_launch_to_LSB),
+  .LSB_head_ROB_id(ROB_head_ROB_id_to_LSB),
 
     // ALU_RS
   .ALU_RS_input_valid(ALU_RS_input_valid_to_ROB),
