@@ -107,78 +107,11 @@ always @(posedge clk) begin
       //$display("www");
     end
     // store queue
-    if(ROB_input_valid == `True && ROB_addr != 32'h30000) begin // 直接进队
+    if(ROB_input_valid == `True) begin // 直接进队
       addrs[in_queue_pos] <= ROB_addr;
       values[in_queue_pos] <= ROB_value;
       OP_IDs[in_queue_pos] <= ROB_OP_ID;
       tail_of_MSB <= in_queue_pos;
-    end
-    else if(ROB_input_valid == `True && ROB_addr == 32'h30000) begin // debug
-      if(cnt_MSB == 3'b000) begin
-        cnt_MSB <= 3'b001;
-        addrs[in_queue_pos] <= 32'h30000;
-        values[in_queue_pos] <= ROB_value;
-        OP_IDs[in_queue_pos] <= ROB_OP_ID;
-        tail_of_MSB <= in_queue_pos;
-      end
-      else if(cnt_MSB == 3'b001) begin
-        cnt_MSB <= 3'b010;
-        addrs[in_queue_pos] <= 32'h30000;
-        values[in_queue_pos] <= ROB_value;
-        OP_IDs[in_queue_pos] <= ROB_OP_ID;
-        tail_of_MSB <= in_queue_pos;
-      end
-      else if(cnt_MSB == 3'b010) begin
-        cnt_MSB <= 3'b011;
-        addrs[in_queue_pos] <= 32'h30000;
-        values[in_queue_pos] <= ROB_value;
-        OP_IDs[in_queue_pos] <= ROB_OP_ID;
-        tail_of_MSB <= in_queue_pos;
-      end
-      else if(cnt_MSB == 3'b011) begin
-        cnt_MSB <= 3'b100;
-        addrs[in_queue_pos] <= 32'h30000;
-        values[in_queue_pos] <= {{24{1'b0}}, 8'b00110000};
-        OP_IDs[in_queue_pos] <= ROB_OP_ID;
-        addrs[tail_next_next] <= 32'h30000;
-        values[tail_next_next] <= {{24{1'b0}}, 8'b00110010};
-        OP_IDs[tail_next_next] <= ROB_OP_ID;
-        tail_of_MSB <= tail_next_next;
-      end
-      else if(cnt_MSB == 3'b100) begin
-        cnt_MSB <= 3'b101;
-        addrs[in_queue_pos] <= 32'h30000;
-        values[in_queue_pos] <= {{24{1'b0}}, 8'b00111001};
-        OP_IDs[in_queue_pos] <= ROB_OP_ID;
-        addrs[tail_next_next] <= 32'h30000;
-        values[tail_next_next] <= {{24{1'b0}}, 8'b00001010};
-        OP_IDs[tail_next_next] <= ROB_OP_ID;
-        tail_of_MSB <= tail_next_next;
-      end
-      else if(cnt_MSB == 3'b101) begin
-        cnt_MSB <= 3'b110;
-        addrs[in_queue_pos] <= 32'h30000;
-        values[in_queue_pos] <= {{24{1'b0}}, 8'b00110001};
-        OP_IDs[in_queue_pos] <= ROB_OP_ID;
-        addrs[tail_next_next] <= 32'h30000;
-        values[tail_next_next] <= {{24{1'b0}}, 8'b00110111};
-        OP_IDs[tail_next_next] <= ROB_OP_ID;
-        tail_of_MSB <= tail_next_next;
-      end
-      else if(cnt_MSB == 3'b110) begin
-        cnt_MSB <= 3'b111;
-        addrs[in_queue_pos] <= 32'h30000;
-        values[in_queue_pos] <= {{24{1'b0}}, 8'b00110001};
-        OP_IDs[in_queue_pos] <= ROB_OP_ID;
-        tail_of_MSB <= in_queue_pos;
-      end
-      else begin
-        cnt_MSB <= 3'b000;
-        addrs[in_queue_pos] <= 32'h30000;
-        values[in_queue_pos] <= {{24{1'b0}}, 8'b00001010};
-        OP_IDs[in_queue_pos] <= ROB_OP_ID;
-        tail_of_MSB <= in_queue_pos;
-      end
     end
     // load area
     if(ALU_LS_need_load == `True) begin
@@ -202,19 +135,9 @@ always @(posedge clk) begin
       fetch_addr <= IF_fetch_pc;
     end
     // size_of_store_buffer
-    if(ROB_input_valid == `True && ROB_addr != 32'h30000) begin
+    if(ROB_input_valid == `True) begin
       if(size_of_MSB != 4'b0000 && store_stage == 4'b0000) size_of_MSB <= size_of_MSB;
       else size_of_MSB <= size_of_MSB + 4'b0001;
-    end
-    else if(ROB_input_valid == `True && ROB_addr == 32'h30000) begin
-      if(cnt_MSB == 3'b011 || cnt_MSB == 3'b100 || cnt_MSB == 3'b101) begin
-        if(size_of_MSB != 4'b0000 && store_stage == 4'b0000) size_of_MSB <= size_of_MSB + 4'b0001;
-        else size_of_MSB <= size_of_MSB + 4'b0010;
-      end
-      else begin
-        if(size_of_MSB != 4'b0000 && store_stage == 4'b0000) size_of_MSB <= size_of_MSB;
-        else size_of_MSB <= size_of_MSB + 4'b0001;
-      end
     end
     else begin
       if(size_of_MSB != 4'b0000 && store_stage == 4'b0000) size_of_MSB <= size_of_MSB - 4'b0001;
