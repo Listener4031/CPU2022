@@ -303,13 +303,6 @@ always @(posedge clk) begin
             else begin
                 PDC_output_valid <= `False;
             end
-            // debug
-            if(inst_pcs[head] == 32'h10a4 || inst_pcs[head] == 32'h11dc || inst_pcs[head] == 32'h120c || inst_pcs[head] == 32'h1238) begin
-                //$display(" ");
-                //$display("inst_pc is %h", inst_pcs[head]);
-                //$display("value is %b", values[head][7 : 0]);
-                //$display("addr is %h", addrs[head]);
-            end
         end
         else begin
             RS_output_valid <= `False;

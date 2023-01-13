@@ -102,10 +102,6 @@ always @(posedge clk) begin
   else if(rdy == `False) begin
   end
   else if(ROB_roll_back_flag == `False) begin
-    // debug
-    if(ROB_input_valid == `True && ROB_addr == 32'h30000) begin
-      //$display("www");
-    end
     // store queue
     if(ROB_input_valid == `True) begin // 直接进队
       addrs[in_queue_pos] <= ROB_addr;
